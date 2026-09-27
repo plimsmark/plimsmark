@@ -1,0 +1,397 @@
+{
+  "edge_txs": [
+    "2BVReXAbkLfXVHpteWKk2PDg6XHy55qjRXKJuHYq1qrj",
+    "33WLVTiGMtkBvLzZ9aNy7tetxYTwmCbeTVaZBa9SXsZp",
+    "6WsJhzAgaQ2ACUx1qQ6YMC7JsymxcMk7Kq3zzv2H5PVP",
+    "8LTUeFrp7vFpfGn2wqo74thAx1VLREZ5vk83XZJTYfk2",
+    "9NPnNq41hwZj7ojNjDBNxXxmtNyJJhZ82dqtqoJ9Nskn",
+    "E6U9R76xsme4eZGntQohgAorp9UUXgiw6QnEFTmaGjGD",
+    "HXRxTUp934MESSbFWTzYVDowrqmwAfywLpaUMkcrV3qV"
+  ],
+  "oldest_txs": [
+    "99R6bU7AgKUerC9oLtKuj2nCS3YBUEdJuHqruHdbLWX3"
+  ],
+  "rows": [
+    {
+      "tx": "2BVReXAbkLfXVHpteWKk2PDg6XHy55qjRXKJuHYq1qrj",
+      "graphql": {
+        "checkpoint_seq": 327453834,
+        "checkpoint_ts": "2026-09-27T09:03:10.294Z",
+        "effects_ts": "2026-09-27T09:03:10.294Z",
+        "event_ts": "2026-09-27T09:03:10.294Z",
+        "event_ts_ms": 1790499790294,
+        "checkpoint_ts_by_seq": "2026-09-27T09:03:10.294Z"
+      },
+      "jsonrpc": {
+        "publicnode": {
+          "event_ts_ms": 1790499790962,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": 1790499790294
+        },
+        "blockvision": {
+          "event_ts_ms": 1790499790933,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": null
+        },
+        "rpcpool": {
+          "event_ts_ms": 1790499790934,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": 1790499790294
+        }
+      },
+      "conclusion": {
+        "checkpoint_seq": 327453834,
+        "checkpoint_ts_ms": 1790499790294,
+        "checkpoint_agree": true,
+        "gql_event_matches_checkpoint": true,
+        "jsonrpc_event_matches_checkpoint": {
+          "publicnode": false,
+          "blockvision": false,
+          "rpcpool": false
+        },
+        "jsonrpc_txblock_matches_checkpoint": {
+          "publicnode": true,
+          "blockvision": true,
+          "rpcpool": true
+        }
+      }
+    },
+    {
+      "tx": "33WLVTiGMtkBvLzZ9aNy7tetxYTwmCbeTVaZBa9SXsZp",
+      "graphql": {
+        "checkpoint_seq": 327453834,
+        "checkpoint_ts": "2026-09-27T09:03:10.294Z",
+        "effects_ts": "2026-09-27T09:03:10.294Z",
+        "event_ts": "2026-09-27T09:03:10.294Z",
+        "event_ts_ms": 1790499790294,
+        "checkpoint_ts_by_seq": "2026-09-27T09:03:10.294Z"
+      },
+      "jsonrpc": {
+        "publicnode": {
+          "event_ts_ms": 1790499790962,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": 1790499790294
+        },
+        "blockvision": {
+          "event_ts_ms": 1790499790934,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": null
+        },
+        "rpcpool": {
+          "event_ts_ms": 1790499790934,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": 1790499790294
+        }
+      },
+      "conclusion": {
+        "checkpoint_seq": 327453834,
+        "checkpoint_ts_ms": 1790499790294,
+        "checkpoint_agree": true,
+        "gql_event_matches_checkpoint": true,
+        "jsonrpc_event_matches_checkpoint": {
+          "publicnode": false,
+          "blockvision": false,
+          "rpcpool": false
+        },
+        "jsonrpc_txblock_matches_checkpoint": {
+          "publicnode": true,
+          "blockvision": true,
+          "rpcpool": true
+        }
+      }
+    },
+    {
+      "tx": "6WsJhzAgaQ2ACUx1qQ6YMC7JsymxcMk7Kq3zzv2H5PVP",
+      "graphql": {
+        "checkpoint_seq": 327453834,
+        "checkpoint_ts": "2026-09-27T09:03:10.294Z",
+        "effects_ts": "2026-09-27T09:03:10.294Z",
+        "event_ts": "2026-09-27T09:03:10.294Z",
+        "event_ts_ms": 1790499790294,
+        "checkpoint_ts_by_seq": "2026-09-27T09:03:10.294Z"
+      },
+      "jsonrpc": {
+        "publicnode": {
+          "event_ts_ms": 1790499790963,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": 1790499790294
+        },
+        "blockvision": {
+          "event_ts_ms": 1790499790934,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": 1790499790294
+        },
+        "rpcpool": {
+          "event_ts_ms": 1790499790935,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": 1790499790294
+        }
+      },
+      "conclusion": {
+        "checkpoint_seq": 327453834,
+        "checkpoint_ts_ms": 1790499790294,
+        "checkpoint_agree": true,
+        "gql_event_matches_checkpoint": true,
+        "jsonrpc_event_matches_checkpoint": {
+          "publicnode": false,
+          "blockvision": false,
+          "rpcpool": false
+        },
+        "jsonrpc_txblock_matches_checkpoint": {
+          "publicnode": true,
+          "blockvision": true,
+          "rpcpool": true
+        }
+      }
+    },
+    {
+      "tx": "8LTUeFrp7vFpfGn2wqo74thAx1VLREZ5vk83XZJTYfk2",
+      "graphql": {
+        "checkpoint_seq": 327453834,
+        "checkpoint_ts": "2026-09-27T09:03:10.294Z",
+        "effects_ts": "2026-09-27T09:03:10.294Z",
+        "event_ts": "2026-09-27T09:03:10.294Z",
+        "event_ts_ms": 1790499790294,
+        "checkpoint_ts_by_seq": "2026-09-27T09:03:10.294Z"
+      },
+      "jsonrpc": {
+        "publicnode": {
+          "event_ts_ms": 1790499790962,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": 1790499790294
+        },
+        "blockvision": {
+          "event_ts_ms": 1790499790933,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": 1790499790294
+        },
+        "rpcpool": {
+          "event_ts_ms": 1790499790934,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": 1790499790294
+        }
+      },
+      "conclusion": {
+        "checkpoint_seq": 327453834,
+        "checkpoint_ts_ms": 1790499790294,
+        "checkpoint_agree": true,
+        "gql_event_matches_checkpoint": true,
+        "jsonrpc_event_matches_checkpoint": {
+          "publicnode": false,
+          "blockvision": false,
+          "rpcpool": false
+        },
+        "jsonrpc_txblock_matches_checkpoint": {
+          "publicnode": true,
+          "blockvision": true,
+          "rpcpool": true
+        }
+      }
+    },
+    {
+      "tx": "9NPnNq41hwZj7ojNjDBNxXxmtNyJJhZ82dqtqoJ9Nskn",
+      "graphql": {
+        "checkpoint_seq": 327453834,
+        "checkpoint_ts": "2026-09-27T09:03:10.294Z",
+        "effects_ts": "2026-09-27T09:03:10.294Z",
+        "event_ts": "2026-09-27T09:03:10.294Z",
+        "event_ts_ms": 1790499790294,
+        "checkpoint_ts_by_seq": "2026-09-27T09:03:10.294Z"
+      },
+      "jsonrpc": {
+        "publicnode": {
+          "event_ts_ms": 1790499790962,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": 1790499790294
+        },
+        "blockvision": {
+          "event_ts_ms": 1790499790933,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": 1790499790294
+        },
+        "rpcpool": {
+          "event_ts_ms": 1790499790934,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": 1790499790294
+        }
+      },
+      "conclusion": {
+        "checkpoint_seq": 327453834,
+        "checkpoint_ts_ms": 1790499790294,
+        "checkpoint_agree": true,
+        "gql_event_matches_checkpoint": true,
+        "jsonrpc_event_matches_checkpoint": {
+          "publicnode": false,
+          "blockvision": false,
+          "rpcpool": false
+        },
+        "jsonrpc_txblock_matches_checkpoint": {
+          "publicnode": true,
+          "blockvision": true,
+          "rpcpool": true
+        }
+      }
+    },
+    {
+      "tx": "E6U9R76xsme4eZGntQohgAorp9UUXgiw6QnEFTmaGjGD",
+      "graphql": {
+        "checkpoint_seq": 327453834,
+        "checkpoint_ts": "2026-09-27T09:03:10.294Z",
+        "effects_ts": "2026-09-27T09:03:10.294Z",
+        "event_ts": "2026-09-27T09:03:10.294Z",
+        "event_ts_ms": 1790499790294,
+        "checkpoint_ts_by_seq": "2026-09-27T09:03:10.294Z"
+      },
+      "jsonrpc": {
+        "publicnode": {
+          "event_ts_ms": 1790499790962,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": 1790499790294
+        },
+        "blockvision": {
+          "event_ts_ms": 1790499790937,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": null
+        },
+        "rpcpool": {
+          "event_ts_ms": 1790499790935,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": 1790499790294
+        }
+      },
+      "conclusion": {
+        "checkpoint_seq": 327453834,
+        "checkpoint_ts_ms": 1790499790294,
+        "checkpoint_agree": true,
+        "gql_event_matches_checkpoint": true,
+        "jsonrpc_event_matches_checkpoint": {
+          "publicnode": false,
+          "blockvision": false,
+          "rpcpool": false
+        },
+        "jsonrpc_txblock_matches_checkpoint": {
+          "publicnode": true,
+          "blockvision": true,
+          "rpcpool": true
+        }
+      }
+    },
+    {
+      "tx": "HXRxTUp934MESSbFWTzYVDowrqmwAfywLpaUMkcrV3qV",
+      "graphql": {
+        "checkpoint_seq": 327453834,
+        "checkpoint_ts": "2026-09-27T09:03:10.294Z",
+        "effects_ts": "2026-09-27T09:03:10.294Z",
+        "event_ts": "2026-09-27T09:03:10.294Z",
+        "event_ts_ms": 1790499790294,
+        "checkpoint_ts_by_seq": "2026-09-27T09:03:10.294Z"
+      },
+      "jsonrpc": {
+        "publicnode": {
+          "event_ts_ms": 1790499790962,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": 1790499790294
+        },
+        "blockvision": {
+          "event_ts_ms": 1790499790933,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": 1790499790294
+        },
+        "rpcpool": {
+          "event_ts_ms": 1790499790934,
+          "tx_ts_ms": 1790499790294,
+          "checkpoint_seq": 327453834,
+          "checkpoint_ts_ms": 1790499790294
+        }
+      },
+      "conclusion": {
+        "checkpoint_seq": 327453834,
+        "checkpoint_ts_ms": 1790499790294,
+        "checkpoint_agree": true,
+        "gql_event_matches_checkpoint": true,
+        "jsonrpc_event_matches_checkpoint": {
+          "publicnode": false,
+          "blockvision": false,
+          "rpcpool": false
+        },
+        "jsonrpc_txblock_matches_checkpoint": {
+          "publicnode": true,
+          "blockvision": true,
+          "rpcpool": true
+        }
+      }
+    },
+    {
+      "tx": "99R6bU7AgKUerC9oLtKuj2nCS3YBUEdJuHqruHdbLWX3",
+      "graphql": {
+        "checkpoint_seq": 273221834,
+        "checkpoint_ts": "2026-05-07T22:53:11.512Z",
+        "effects_ts": "2026-05-07T22:53:11.512Z",
+        "event_ts": "2026-05-07T22:53:11.512Z",
+        "event_ts_ms": 1778194391512,
+        "checkpoint_ts_by_seq": "2026-05-07T22:53:11.512Z"
+      },
+      "jsonrpc": {
+        "publicnode": {
+          "event_ts_ms": 1778194392276,
+          "tx_ts_ms": 1778194391512,
+          "checkpoint_seq": 273221834,
+          "checkpoint_ts_ms": 1778194391512
+        },
+        "blockvision": {
+          "event_ts_ms": 1778194392305,
+          "tx_ts_ms": 1778194391512,
+          "checkpoint_seq": 273221834,
+          "checkpoint_ts_ms": 1778194391512
+        },
+        "rpcpool": {
+          "event_ts_ms": 1778194392263,
+          "tx_ts_ms": 1778194391512,
+          "checkpoint_seq": 273221834,
+          "checkpoint_ts_ms": 1778194391512
+        }
+      },
+      "conclusion": {
+        "checkpoint_seq": 273221834,
+        "checkpoint_ts_ms": 1778194391512,
+        "checkpoint_agree": true,
+        "gql_event_matches_checkpoint": true,
+        "jsonrpc_event_matches_checkpoint": {
+          "publicnode": false,
+          "blockvision": false,
+          "rpcpool": false
+        },
+        "jsonrpc_txblock_matches_checkpoint": {
+          "publicnode": true,
+          "blockvision": true,
+          "rpcpool": true
+        }
+      }
+    }
+  ],
+  "meta": {
+    "ua": "plimmark-sui-spike/0.1",
+    "vantage": "local-dev",
+    "probe_commit": "a4cac42fd325ae4caa1e905c6e51b635bd080255"
+  }
+}
