@@ -15,6 +15,7 @@ Pagination contract (item 4):
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Callable, Optional
 
 from probe.classify import (
@@ -37,6 +38,10 @@ def _jsonrpc_id(ev: dict):
     """JSON-RPC event identity = (txDigest, eventSeq)."""
     i = ev["id"]
     return (i["txDigest"], int(i["eventSeq"]))
+
+
+def iso_to_ms(iso: str) -> int:
+    return int(datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp() * 1000)
 
 
 def _outcome_to_result(kind, provider, outcome):
@@ -140,11 +145,55 @@ class JsonRpcClient:
             f"[{coverage_oldest}, {coverage_newest}], {len(ids)} events so far",
         )
 
+    def collect_window(self, event_filter, initial_cursor, ts_start_ms, ts_end_ms):
+        """Descending cursor scan seeded at `initial_cursor`, collecting events
+        with ts in [ts_start_ms, ts_end_ms). Returns (events, terminal) where
+        events = [{"id": (txDigest, eventSeq), "timestampMs": int}] and terminal
+        is None (window cleanly covered) or an error class string.
+        """
+        cursor = initial_cursor
+        events = []
+        for _page in range(self.page_cap):
+            outcome = self._call(
+                "suix_queryEvents", [event_filter, cursor, self.page_size, True]
+            )
+            early = _outcome_to_result("jsonrpc", self.provider, outcome)
+            if isinstance(early, QueryResult):
+                return events, early.error_class
+            _, parsed = early
+            cls, reason = classify("jsonrpc", outcome.status_code, parsed)
+            if cls != OK:
+                return events, cls
+
+            result = parsed.get("result") or {}
+            data = result.get("data") or []
+            for ev in data:
+                ts = int(ev["timestampMs"])
+                if ts >= ts_end_ms:
+                    continue  # newer than the window (descending), keep going older
+                if ts < ts_start_ms:
+                    return events, None  # crossed the window start: fully covered
+                events.append({"id": _jsonrpc_id(ev), "timestampMs": ts})
+
+            if not result.get("hasNextPage"):
+                return events, None  # index ended within/after the window
+            cursor = result.get("nextCursor")
+        return events, "cap_reached"
+
 
 _EVENTS_QUERY = (
     "query($first:Int!,$after:String,$filter:EventFilter){"
     "events(first:$first,after:$after,filter:$filter){"
     "pageInfo{hasNextPage endCursor} nodes{__typename}}}"
+)
+
+# Windowed query pulls the exact identity + timestamp needed for the boundary
+# guard (identity confirmed live in item 5b).
+_WINDOW_QUERY = (
+    "query($first:Int!,$after:String,$filter:EventFilter){"
+    "events(first:$first,after:$after,filter:$filter){"
+    "pageInfo{hasNextPage endCursor} "
+    "nodes{sequenceNumber timestamp transaction{digest}}}}"
 )
 
 
@@ -243,3 +292,45 @@ class GraphQlClient:
             "cap_reached",
             f"request cap {self.request_cap} reached; {len(ids)} events so far",
         )
+
+    def collect_window(self, event_filter):
+        """Paginate a checkpoint-bounded events filter to completion, returning
+        (events, terminal) with events = [{"id": (digest, seq), "timestampMs":
+        int}]. terminal is None (complete), 'scan_budget', or 'cap_reached'.
+        Assumes the filter carries afterCheckpoint/beforeCheckpoint bounds.
+        """
+        cursor = None
+        events = []
+        for _request in range(self.request_cap):
+            outcome = self._call(_WINDOW_QUERY, {
+                "first": self.page_size, "after": cursor, "filter": event_filter
+            })
+            early = _outcome_to_result("graphql", self.provider, outcome)
+            if isinstance(early, QueryResult):
+                return events, early.error_class
+            _, parsed = early
+
+            conn = (parsed.get("data") or {}).get("events") or {}
+            nodes = conn.get("nodes")
+            page_info = conn.get("pageInfo") or {}
+            has_next = page_info.get("hasNextPage")
+            end_cursor = page_info.get("endCursor")
+            if nodes is None:
+                cls, reason = classify("graphql", outcome.status_code, parsed)
+                return events, (cls if cls != OK else "ours")
+
+            if len(nodes) == 0 and has_next:
+                if end_cursor is None or end_cursor == cursor:
+                    return events, SCAN_BUDGET
+                cursor = end_cursor
+                continue
+
+            for n in nodes:
+                events.append({
+                    "id": (n["transaction"]["digest"], int(n["sequenceNumber"])),
+                    "timestampMs": iso_to_ms(n["timestamp"]),
+                })
+            if not has_next:
+                return events, None
+            cursor = end_cursor
+        return events, "cap_reached"

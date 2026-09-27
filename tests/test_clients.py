@@ -245,3 +245,56 @@ def test_graphql_checkpoint_by_sequence():
     cp = g.checkpoint_by_sequence(100)
     assert cp["sequenceNumber"] == "100"
     assert cp["timestamp"] == "2026-09-27T00:00:00Z"
+
+
+# ==================== windowed collection (Q2) ====================
+
+def rpc_ev_ts(digest, seq, ts_ms):
+    return {"id": {"txDigest": digest, "eventSeq": str(seq)}, "timestampMs": str(ts_ms), "type": "T"}
+
+
+def test_jsonrpc_collect_window_stops_when_crossing_start():
+    # window [1000, 2000). Descending seed returns some newer-than-window, then
+    # in-window, then an older-than-window event that stops pagination.
+    t = FakeTransport(
+        [
+            rpc_page([rpc_ev_ts("0xNEW", 0, 2500), rpc_ev_ts("0xA", 0, 1800)], True, {"c": 1}),
+            rpc_page([rpc_ev_ts("0xB", 0, 1200), rpc_ev_ts("0xOLD", 0, 500)], True, {"c": 2}),
+        ]
+    )
+    c = JsonRpcClient(t, "http://x", "publicnode", page_size=50)
+    events, terminal = c.collect_window({"MoveEventType": "T"}, {"c": 0}, ts_start_ms=1000, ts_end_ms=2000)
+    assert terminal is None  # cleanly crossed the window start
+    ids = [e["id"] for e in events]
+    assert ids == [("0xA", 0), ("0xB", 0)]  # 0xNEW excluded (>=end), 0xOLD stops (<start)
+    assert len(t.requests) == 2  # stopped as soon as it crossed, no third page
+
+
+def test_jsonrpc_collect_window_cap_reached():
+    cur = {"c": 1}
+    # every page in-window and hasNextPage true -> never crosses start -> cap
+    t = FakeTransport([rpc_page([rpc_ev_ts(f"0x{i}", 0, 1500)], True, cur) for i in range(3)])
+    c = JsonRpcClient(t, "http://x", "publicnode", page_size=50, page_cap=3)
+    events, terminal = c.collect_window({"MoveEventType": "T"}, None, ts_start_ms=1000, ts_end_ms=2000)
+    assert terminal == "cap_reached"
+    assert len(events) == 3
+
+
+def test_graphql_collect_window_complete():
+    def gnode(digest, seq, ts):
+        return {"sequenceNumber": seq, "timestamp": ts, "transaction": {"digest": digest}}
+
+    t = FakeTransport(
+        [
+            _ok({"data": {"events": {"nodes": [gnode("0xA", 0, "2026-09-27T00:00:01Z")],
+                                      "pageInfo": {"hasNextPage": True, "endCursor": "c1"}}}}),
+            _ok({"data": {"events": {"nodes": [gnode("0xB", 1, "2026-09-27T00:00:02Z")],
+                                      "pageInfo": {"hasNextPage": False, "endCursor": "c2"}}}}),
+        ]
+    )
+    g = GraphQlClient(t, "http://g", "mysten_graphql", id_of=gql_id_of)
+    events, terminal = g.collect_window({"type": "T", "afterCheckpoint": 10, "beforeCheckpoint": 20})
+    assert terminal is None
+    ids = [e["id"] for e in events]
+    assert ids == [("0xA", 0), ("0xB", 1)]
+    assert events[0]["timestampMs"] == 1790467201000  # ISO -> epoch ms
