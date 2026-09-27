@@ -89,3 +89,15 @@ reference/      earlier spike's dated observations — RE-VERIFY, do not import
 ```bash
 .venv/bin/python -m pytest        # network-free test suite
 ```
+
+## Public report
+
+A static, self-contained report of the spike lives in `docs/` and is published at
+**https://plimsmark.com** via GitHub Pages. Every number and date on the page is
+read from the dated fixtures by `scripts/build_site.py` (tested network-free in
+`tests/test_build_site.py`), never typed by hand. Regenerate it with:
+
+```bash
+.venv/bin/python scripts/build_site.py   # -> docs/index.html (+ CNAME, .nojekyll)
+```
+

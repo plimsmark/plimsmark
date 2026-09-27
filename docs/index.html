@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plimsmark — do Sui RPC providers disagree?</title>
+<meta name="description" content="A dated, network-tested spike: do Sui mainnet RPC providers disagree on event index completeness or freshness? Verdict: REFUTED.">
+<style>
+:root{
+  --navy:#0a2540; --navy-2:#0e2f52; --teal:#12726d; --teal-ink:#0c5551;
+  --paper:#f5f7fa; --paper-2:#e9eef4; --ink:#0a2540; --muted:#4a5b6e;
+  --border:#c9d6e2; --code:#eef2f7;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#0a1a2f; --paper-2:#0e2440; --ink:#e8eef4; --muted:#a7b8c9;
+    --teal:#5fd3c9; --teal-ink:#8fe3db; --border:#20385a; --code:#0e2440; --navy:#0a1a2f;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  line-height:1.6; font-size:17px;
+}
+.wrap{max-width:760px; margin:0 auto; padding:24px 18px 72px}
+header{display:flex; align-items:center; gap:14px; padding:8px 0 4px}
+.mark{width:46px; height:46px; color:var(--teal); flex:0 0 auto}
+h1{font-size:1.6rem; margin:.2em 0; letter-spacing:.2px}
+.sub{color:var(--muted); margin:.1em 0 1.2em}
+h2{font-size:1.25rem; margin:2em 0 .4em; border-bottom:2px solid var(--teal); padding-bottom:.2em}
+h3{font-size:1.05rem; margin:1.3em 0 .3em}
+a{color:var(--teal-ink)}
+code,pre{background:var(--code); border:1px solid var(--border); border-radius:6px}
+code{padding:.08em .35em; font-size:.9em}
+pre{padding:12px 14px; overflow:auto}
+pre code{border:0; padding:0; background:transparent}
+.verdict{
+  display:inline-block; font-weight:700; letter-spacing:.5px;
+  background:var(--teal); color:#f7fbff; padding:.15em .6em; border-radius:6px;
+}
+@media (prefers-color-scheme: dark){ .verdict{ color:#06201d } }
+table{border-collapse:collapse; width:100%; margin:.6em 0; font-size:.94rem}
+th,td{border:1px solid var(--border); padding:6px 9px; text-align:left; vertical-align:top}
+th{background:var(--paper-2)}
+ul{padding-left:1.2em}
+li{margin:.25em 0}
+.kv{color:var(--muted); font-size:.92rem}
+footer{margin-top:3em; padding-top:1em; border-top:1px solid var(--border); color:var(--muted); font-size:.86rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Plimsoll load line mark: a circle bisected by a horizontal line" fill="none" stroke="currentColor" stroke-width="6"><line x1="4" y1="50" x2="96" y2="50"/><circle cx="50" cy="50" r="26"/></svg>
+  <div>
+    <h1>Plimsmark</h1>
+    <div class="sub">Do Sui mainnet RPC providers disagree on event data? A dated, network-tested spike.</div>
+  </div>
+</header>
+
+<main>
+<section>
+  <h2>1. The question, and the verdict</h2>
+  <p><strong>Question tested:</strong> do Sui mainnet RPC providers return
+  different answers to the same question — event index completeness or freshness?</p>
+  <p>Verdict: <span class="verdict">REFUTED</span>. For the pinned queries,
+  the providers do <strong>not</strong> disagree on completeness or freshness. Two runs,
+  &gt;10&nbsp;minutes apart, each JSON-RPC query issued twice per provider for
+  self-consistency.</p>
+  <table>
+    <tr><th>Run</th><th>Start (UTC)</th><th>End (UTC)</th></tr>
+    <tr><td>Run 1</td><td><code>2026-09-27T10:25:05.105605+00:00</code></td><td><code>2026-09-27T10:32:55.260404+00:00</code></td></tr>
+    <tr><td>Run 2</td><td><code>2026-09-27T10:43:15.855962+00:00</code></td><td><code>2026-09-27T10:51:35.252748+00:00</code></td></tr>
+  </table>
+  <p class="kv">Vantage <code>local-dev</code> · User-Agent <code>plimmark-sui-spike/0.1</code>
+  · comparable predicate: MoveEventType (JSON-RPC) == type with fully-qualified type name (GraphQL).</p>
+  <h3>Providers (pinned, no API keys)</h3>
+  <table>
+    <tr><th>id</th><th>endpoint</th><th>paradigm</th></tr>
+    <tr><td><code>mysten_graphql</code></td><td>https://graphql.mainnet.sui.io/graphql</td><td>graphql</td></tr><tr><td><code>publicnode</code></td><td>https://sui-rpc.publicnode.com</td><td>jsonrpc</td></tr><tr><td><code>blockvision</code></td><td>https://sui-mainnet-endpoint.blockvision.org</td><td>jsonrpc</td></tr><tr><td><code>rpcpool</code></td><td>https://mainnet.sui.rpcpool.com</td><td>jsonrpc</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. Findings Sui developers can use today</h2>
+
+  <h3>Mysten's public fullnode JSON-RPC is deprecated</h3>
+  <p>A JSON-RPC call to <code>fullnode.mainnet.sui.io</code> returns error
+  <code>-32601</code> (verbatim):</p>
+  <pre><code>Method not found. JSON-RPC on public fullnodes has been deprecated. Please migrate to gRPC or GraphQL endpoints. See https://docs.sui.io/develop/accessing-data/json-rpc-migration for more information.</code></pre>
+  <p>Use GraphQL or gRPC. The three third-party JSON-RPC providers below still serve
+  the legacy JSON-RPC surface.</p>
+
+  <h3>The <code>MoveModule</code> event filter matches the transaction's called module, not the event type</h3>
+  <p>JSON-RPC <code>suix_queryEvents</code> with
+  <code>MoveModule&nbsp;=&nbsp;{package:0x2, module:coin}</code> returned only
+  <strong>32</strong> events — and their type is
+  <code>0x2::deny_list::PerTypeConfigCreated</code>, not a coin event. The filter selects
+  events emitted by transactions whose Move call targets that module, not events of a type
+  in that module. All three JSON-RPC providers returned the identical 32.
+  To enumerate a specific event type, filter by its struct type instead:
+  <code>MoveEventType</code> (JSON-RPC) or <code>type</code> with a fully-qualified type
+  name (GraphQL) — that query returned <strong>1416</strong> events,
+  identical across all four providers.</p>
+
+  <h3>GraphQL's scan-budget trap: 0 nodes + <code>hasNextPage: true</code> does not mean empty</h3>
+  <p>A forward GraphQL <code>events</code> scan can return a page with zero nodes while
+  <code>pageInfo.hasNextPage</code> is <code>true</code>: the per-request scan budget was
+  exhausted before a match, not the end of data. Keep paginating while the cursor advances;
+  treat a stalled cursor (no advance) as an incomplete, unknown result — never as an empty set.</p>
+
+  <h3>Legacy JSON-RPC event timestamps run a fraction of a second late</h3>
+  <p>Across <strong>8</strong> checked transactions, all providers agreed on
+  <em>which checkpoint</em> contains each transaction. GraphQL's event timestamp equals the
+  containing checkpoint's own timestamp (the chain's time). Legacy JSON-RPC
+  <code>suix_queryEvents</code> event <code>timestampMs</code> ran
+  <strong>0.64–0.79&nbsp;s later</strong> than the checkpoint — and later
+  than the same node's own <code>sui_getTransactionBlock</code> timestamp, which does match.
+  If you bound an event window by time, the two paradigms will drop different events at the
+  edges even though every event is present in both indexes. Bound by checkpoint, or treat
+  GraphQL's timestamp as ground truth.</p>
+
+  <h3>Window access on JSON-RPC: compound filters are rejected; cursor seeding works</h3>
+  <p>A compound filter <code>All[MoveEventType, TimeRange]</code> was rejected
+  (<code>-32602 Invalid params</code>) by all three JSON-RPC providers. Two strategies that
+  work: seed a descending <code>suix_queryEvents&nbsp;{MoveEventType}</code> scan from a
+  known event id near the window end (used here), or filter by <code>TimeRange</code> alone
+  and filter the type client-side.</p>
+</section>
+
+<section>
+  <h2>3. Method</h2>
+  <ul>
+    <li><strong>Comparable predicate.</strong> Compare only what means the same thing on both
+      paradigms: the event <em>struct type</em> (<code>MoveEventType</code> == GraphQL
+      <code>type</code>). <code>MoveModule</code> (called module) is not comparable to GraphQL's
+      <code>module</code> (emitting module), so that query is labelled not_comparable, never
+      "different".</li>
+    <li><strong>Identity match.</strong> Event identity is exact across paradigms:
+      JSON-RPC <code>(txDigest, eventSeq)</code> == GraphQL
+      <code>(transaction.digest, sequenceNumber)</code>.</li>
+    <li><strong>Self-consistency.</strong> Each JSON-RPC query ran twice per provider; a
+      provider disagreeing with itself is flagged and excluded from that query's comparison.</li>
+    <li><strong>Two runs.</strong> Findings must hold in both runs. Results that did not
+      paginate cleanly are marked unknown (null), never counted as zero.</li>
+    <li><strong>Windows.</strong> Checkpoint ranges mapped to timestamps; boundary events
+      excluded on all providers. Three 5-minute windows:</li>
+  </ul>
+  <table>
+    <tr><th>window</th><th>checkpoints</th><th>start (UTC)</th></tr>
+    <tr><td>recent_1h</td><td>327,452,502–327,453,835</td><td>2026-09-27T08:58:10Z</td></tr><tr><td>d30</td><td>315,909,000–315,910,350</td><td>2026-08-28T09:58:10Z</td></tr><tr><td>oldest_available</td><td>273,221,834–273,223,147</td><td>2026-05-07T22:53:11Z</td></tr>
+  </table>
+  <p class="kv">Q1b type <code>0x2::deny_list::PerTypeConfigCreated</code>. Q2 type
+  <code>0x55300367a2d40813727ccac4ecee977a39fb9cdb46f2e6b2c354b9798f5de2c0::event::PriceFeedUpdateEvent</code>.</p>
+</section>
+
+<section>
+  <h2>4. Limits</h2>
+  <ul>
+    <li>A ~20-minute snapshot on 2026-09-27, not continuous monitoring.</li>
+    <li>A single network vantage (<code>local-dev</code>).</li>
+    <li>One GraphQL provider (Mysten); GraphQL claims rest on it alone.</li>
+    <li>The three JSON-RPC providers may run shared indexer software, so their agreement is
+      not four fully independent implementations.</li>
+    <li>The oldest window held only one matching event, so it is weak evidence on its own.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>5. Evidence</h2>
+  <p>Every claim above is backed by a committed file. Raw responses, per-request observation
+  rows (timestamp, provider, latency, bytes, error class + verbatim message), and the
+  verdict computation are all in the repository.</p>
+  <ul>
+    <li><a href="https://github.com/plimsmark/plimsmark/blob/main/fixtures/premise_2026-09-27.md">Verdict, comparison tables, addendum</a> — <span class="kv">fixtures/premise_2026-09-27.md</span></li><li><a href="https://github.com/plimsmark/plimsmark/blob/main/fixtures/premise_2026-09-27_run1.jsonl.gz">Run 1 observations + results (gz)</a> — <span class="kv">fixtures/premise_2026-09-27_run1.jsonl.gz</span></li><li><a href="https://github.com/plimsmark/plimsmark/blob/main/fixtures/premise_2026-09-27_run2.jsonl.gz">Run 2 observations + results (gz)</a> — <span class="kv">fixtures/premise_2026-09-27_run2.jsonl.gz</span></li><li><a href="https://github.com/plimsmark/plimsmark/blob/main/spike_config.json">Pinned query set + windows</a> — <span class="kv">spike_config.json</span></li><li><a href="https://github.com/plimsmark/plimsmark/blob/main/fixtures/semantics_2026-09-27.md">Filter semantics + comparability evidence</a> — <span class="kv">fixtures/semantics_2026-09-27.md</span></li><li><a href="https://github.com/plimsmark/plimsmark/blob/main/fixtures/timestamps_2026-09-27.md">Timestamp ground truth</a> — <span class="kv">fixtures/timestamps_2026-09-27.md</span></li><li><a href="https://github.com/plimsmark/plimsmark/blob/main/fixtures/graphql_introspection_2026-09-27.json">GraphQL schema introspection</a> — <span class="kv">fixtures/graphql_introspection_2026-09-27.json</span></li><li><a href="https://github.com/plimsmark/plimsmark/blob/main/fixtures/mysten_fullnode_jsonrpc_2026-09-27.md">Mysten fullnode JSON-RPC -32601 (verbatim)</a> — <span class="kv">fixtures/mysten_fullnode_jsonrpc_2026-09-27.md</span></li><li><a href="https://github.com/plimsmark/plimsmark/blob/main/fixtures/corrections_2026-09-27.md">Corrections</a> — <span class="kv">fixtures/corrections_2026-09-27.md</span></li><li><a href="https://github.com/plimsmark/plimsmark/blob/main/fixtures/public_scrub_2026-09-27.md">Public-release scrub</a> — <span class="kv">fixtures/public_scrub_2026-09-27.md</span></li>
+  </ul>
+</section>
+
+<section>
+  <h2>6. Correction</h2>
+  <p>An earlier spike read publicnode's 32-event <code>0x2::coin</code> answer as
+  a partial or stale index. That is refuted here: the 32 events are
+  <code>deny_list::PerTypeConfigCreated</code>, returned identically by all three JSON-RPC
+  providers; <code>MoveModule</code> matches the called module, not the event type. See
+  <a href="https://github.com/plimsmark/plimsmark/blob/main/fixtures/corrections_2026-09-27.md">corrections_2026-09-27.md</a>.</p>
+</section>
+</main>
+
+<footer>
+  <p>Plimsmark — named for the Plimsoll line, a ship's load line. A premise spike, not a
+  product. All values on this page are read from the dated fixtures linked above.</p>
+</footer>
+
+</div>
+</body>
+</html>
