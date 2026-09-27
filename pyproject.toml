@@ -1,0 +1,11 @@
+[project]
+name = "plimmark"
+version = "0.0.0"
+description = "Premise spike: do Sui mainnet RPC providers disagree on event index completeness/freshness?"
+requires-python = ">=3.11"
+dependencies = ["httpx", "pytest"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-ra"
