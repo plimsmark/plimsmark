@@ -50,6 +50,24 @@ _DEFINITIVE_MARKERS = (
 # JSON-RPC error codes we treat as definitive.
 _DEFINITIVE_RPC_CODES = (-32601, -32602)
 
+# GraphQL definitive shapes: schema/validation problems that a retry cannot fix.
+# Everything else in a GraphQL error envelope is a server-side EXECUTION error
+# (e.g. "Failed to list events") that is transient — proven by the identical
+# query succeeding on a later run (item 9 review finding).
+_GRAPHQL_DEFINITIVE_CODES = (
+    "GRAPHQL_VALIDATION_FAILED",
+    "GRAPHQL_PARSE_FAILED",
+    "BAD_USER_INPUT",
+)
+_GRAPHQL_DEFINITIVE_MARKERS = (
+    "cannot query field",
+    "unknown field",
+    "unknown argument",
+    "unknown type",
+    "no such field",
+    "must have a selection",
+)
+
 
 def _reason_from_body(body: object) -> str:
     """Best verbatim message from a parsed body, else its string form."""
@@ -98,15 +116,20 @@ def classify(
 
     # 3. GraphQL error envelope.
     if isinstance(body, dict) and isinstance(body.get("errors"), list) and body["errors"]:
+        first = body["errors"][0] if isinstance(body["errors"][0], dict) else {}
+        code = (first.get("extensions") or {}).get("code")
         msg = reason
         low = msg.lower()
         if "page size is too large" in low:
             return OURS, msg  # we asked for more than the declared cap
-        if any(m in low for m in _DEFINITIVE_MARKERS):
+        if code in _GRAPHQL_DEFINITIVE_CODES:
+            return DEFINITIVE, msg  # schema/validation/bad-input: no retry helps
+        if any(m in low for m in _GRAPHQL_DEFINITIVE_MARKERS):
             return DEFINITIVE, msg
-        if http_status is not None and (http_status == 429 or http_status >= 500):
-            return TRANSIENT, msg
-        return DEFINITIVE, msg
+        if any(m in low for m in _DEFINITIVE_MARKERS):
+            return DEFINITIVE, msg  # no longer available / key required / etc.
+        # Otherwise a server-side execution error -> transient (retryable).
+        return TRANSIENT, msg
 
     # 4. HTTP status on a body with no structured error.
     if http_status is not None:

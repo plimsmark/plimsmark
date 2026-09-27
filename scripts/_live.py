@@ -33,11 +33,16 @@ PROVIDERS = {
 }
 
 
+from probe.provenance import provenance  # noqa: E402
+
+
 def probe_commit() -> str:
+    """Provenance stamp for this run: <commit>, or <commit>+dirty:<hash> when the
+    working tree has uncommitted changes (see item 9 review finding)."""
+    def _run(args):
+        return subprocess.check_output(["git", *args], text=True)
     try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], text=True
-        ).strip()
+        return provenance(_run)
     except Exception:
         return "unknown"
 

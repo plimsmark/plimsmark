@@ -156,6 +156,38 @@ def test_non_empty_graphql_page_is_ok():
     assert cls == OK
 
 
+# --- GraphQL server-side execution error is transient, not definitive ---
+
+def test_graphql_failed_to_list_events_is_transient():
+    # Verbatim run1 shape: this identical query SUCCEEDED in run2, so a server-side
+    # execution error must be transient (retryable), not definitive.
+    body = {"errors": [{"message": "Failed to list events"}]}
+    cls, reason = classify("graphql", 200, body)
+    assert cls == TRANSIENT
+    assert reason == "Failed to list events"
+
+
+def test_graphql_schema_validation_stays_definitive():
+    # A known definitive shape (schema validation / unknown field) is NOT retryable.
+    body = {
+        "errors": [
+            {
+                "message": 'Cannot query field "bogus" on type "Query".',
+                "extensions": {"code": "GRAPHQL_VALIDATION_FAILED"},
+            }
+        ]
+    }
+    cls, _ = classify("graphql", 200, body)
+    assert cls == DEFINITIVE
+
+
+def test_graphql_page_size_still_ours_not_transient():
+    # Regression guard: page-size-too-large stays OURS even after the transient
+    # default; it is our request, not a server hiccup.
+    cls, _ = classify("graphql", 200, PAGE_SIZE_TOO_LARGE)
+    assert cls == OURS
+
+
 # --- ok passthrough for clean JSON-RPC result ---
 
 def test_clean_jsonrpc_result_is_ok():
