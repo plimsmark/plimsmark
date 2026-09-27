@@ -1,0 +1,54 @@
+{
+  "liveness": {
+    "mysten_graphql": {
+      "http": 200,
+      "error_class": null,
+      "error_reason": null,
+      "body": "{\"data\":{\"chainIdentifier\":\"4btiuiMPvEENsttpZC7CZ53DruC3MAgfznDbASZ7DR6S\",\"checkpoint\":{\"sequenceNumber\":327468209}}}"
+    },
+    "publicnode": {
+      "http": 200,
+      "error_class": null,
+      "error_reason": null,
+      "body": "{\"jsonrpc\":\"2.0\",\"result\":\"327468213\",\"id\":1}\n"
+    },
+    "blockvision": {
+      "http": 200,
+      "error_class": null,
+      "error_reason": null,
+      "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"327468216\"}"
+    },
+    "rpcpool": {
+      "http": 200,
+      "error_class": null,
+      "error_reason": null,
+      "body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"327468219\"}"
+    }
+  },
+  "move_module_semantics": {
+    "publicnode": {
+      "count": 32,
+      "hasNextPage": false,
+      "types": [
+        "0x2::deny_list::PerTypeConfigCreated"
+      ],
+      "span": "oldest=2025-05-08 newest=2026-09-03"
+    },
+    "blockvision": {
+      "count": 32,
+      "hasNextPage": false,
+      "types": [
+        "0x2::deny_list::PerTypeConfigCreated"
+      ],
+      "span": "oldest=2025-05-08 newest=2026-09-03"
+    },
+    "rpcpool": {
+      "count": 32,
+      "hasNextPage": false,
+      "types": [
+        "0x2::deny_list::PerTypeConfigCreated"
+      ],
+      "span": "oldest=2025-05-08 newest=2026-09-03"
+    }
+  }
+}

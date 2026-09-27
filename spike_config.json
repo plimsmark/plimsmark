@@ -1,0 +1,138 @@
+{
+  "date": "2026-09-27",
+  "vantage": "local-dev",
+  "probe_commit": "59ad599093520454ea4adf0d2bc85c54d93cf7c5",
+  "tip_at_config": {
+    "checkpoint": 327469819,
+    "ts_ms": 1790503390888
+  },
+  "providers": {
+    "mysten_graphql": {
+      "endpoint": "https://graphql.mainnet.sui.io/graphql",
+      "paradigm": "graphql"
+    },
+    "publicnode": {
+      "endpoint": "https://sui-rpc.publicnode.com",
+      "paradigm": "jsonrpc"
+    },
+    "blockvision": {
+      "endpoint": "https://sui-mainnet-endpoint.blockvision.org",
+      "paradigm": "jsonrpc"
+    },
+    "rpcpool": {
+      "endpoint": "https://mainnet.sui.rpcpool.com",
+      "paradigm": "jsonrpc"
+    }
+  },
+  "jsonrpc_page_size": 50,
+  "identity": {
+    "jsonrpc": "(txDigest, eventSeq)",
+    "graphql": "(transaction.digest, sequenceNumber)",
+    "equivalent": true,
+    "note": "exact match; GraphQL sequenceNumber == JSON-RPC eventSeq, transaction.digest == txDigest"
+  },
+  "comparable_predicate": {
+    "use": "MoveEventType (JSON-RPC) == type with fully-qualified type name (GraphQL)",
+    "not_comparable": "JSON-RPC MoveModule (called module) != GraphQL module (emitting module)",
+    "evidence": "MoveModule 0x2::coin returns 0x2::deny_list::PerTypeConfigCreated events (deny_list-typed, coin-called); GraphQL module=0x2::coin returns a different set."
+  },
+  "boundary_guard": "exclude events with ts == ts(c_start) or ts == ts(c_end) on all providers",
+  "queries": {
+    "Q1": {
+      "description": "JSON-RPC MoveModule 0x2::coin, full history",
+      "kind": "move_module",
+      "filter": {
+        "MoveModule": {
+          "package": "0x2",
+          "module": "coin"
+        }
+      },
+      "providers": [
+        "publicnode",
+        "blockvision",
+        "rpcpool"
+      ],
+      "graphql": "not_comparable",
+      "graphql_reason": "MoveModule (called module) has no established GraphQL equivalent; module filter differs in meaning."
+    },
+    "Q1b": {
+      "description": "Event types from Q1's results, each as MoveEventType, full history, all 4 providers",
+      "kind": "move_event_type_full_history",
+      "types": [
+        "0x2::deny_list::PerTypeConfigCreated"
+      ],
+      "providers": [
+        "publicnode",
+        "blockvision",
+        "rpcpool",
+        "mysten_graphql"
+      ],
+      "comparable": true,
+      "note": "GraphQL leg uses type=<FQ type name>; identity equivalent. If a type caps, move to Q2 window scheme."
+    },
+    "Q2": {
+      "description": "One high-volume MoveEventType over three 5-min windows",
+      "kind": "move_event_type_window",
+      "type": "0x55300367a2d40813727ccac4ecee977a39fb9cdb46f2e6b2c354b9798f5de2c0::event::PriceFeedUpdateEvent",
+      "type_source": "most frequent MoveEventType in newest ~200 tip events accepted by all 3 JSON-RPC providers (Pyth PriceFeedUpdateEvent)",
+      "providers": [
+        "publicnode",
+        "blockvision",
+        "rpcpool",
+        "mysten_graphql"
+      ],
+      "windows": [
+        {
+          "label": "recent_1h",
+          "target_end_ms": 1790499790888,
+          "c_start": 327452502,
+          "c_end": 327453835,
+          "ts_c_start_ms": 1790499490730,
+          "ts_c_end_ms": 1790499790556,
+          "ts_c_start": "2026-09-27T08:58:10.730000+00:00",
+          "ts_c_end": "2026-09-27T09:03:10.556000+00:00",
+          "q2_type_present": true
+        },
+        {
+          "label": "d30",
+          "target_end_ms": 1787911390888,
+          "c_start": 315909000,
+          "c_end": 315910350,
+          "ts_c_start_ms": 1787911090774,
+          "ts_c_end_ms": 1787911390812,
+          "ts_c_start": "2026-08-28T09:58:10.774000+00:00",
+          "ts_c_end": "2026-08-28T10:03:10.812000+00:00",
+          "q2_type_present": true
+        },
+        {
+          "label": "oldest_available",
+          "note": "365d-ago window was empty (type not yet deployed); using the oldest 5-min window where the type exists",
+          "c_start": 273221834,
+          "c_end": 273223147,
+          "ts_c_start_ms": 1778194391512,
+          "ts_c_end_ms": 1778194691492,
+          "ts_c_start": "2026-05-07T22:53:11.512000+00:00",
+          "ts_c_end": "2026-05-07T22:58:11.492000+00:00",
+          "q2_type_present": true
+        }
+      ],
+      "access_strategy": {
+        "primary": "strategy2_cursor_seed",
+        "primary_detail": "seed JSON-RPC descending suix_queryEvents {MoveEventType} from the GraphQL event id at/after c_end; paginate until ts < ts(c_start); accepted on all 3 JSON-RPC providers.",
+        "fallback": "strategy3_timerange",
+        "fallback_detail": "TimeRange alone (accepted on all 3), type filtered client-side.",
+        "rejected": "strategy1_compound All[MoveEventType,TimeRange] -> definitive Invalid params on all 3."
+      }
+    }
+  },
+  "freshness": {
+    "samples": 3,
+    "interval_s": 20
+  },
+  "run": {
+    "page_cap": 400,
+    "request_cap": 1500,
+    "byte_cap_bytes": 8388608,
+    "retries": 3
+  }
+}

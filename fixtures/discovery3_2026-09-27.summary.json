@@ -1,0 +1,32 @@
+{
+  "seed": {
+    "id": {
+      "txDigest": "5sBhLd47FCaRh5c16YScL5QpKMyHy6HFisXi8qyZttKZ",
+      "eventSeq": "2"
+    },
+    "ts": "2026-09-27T10:00:47.332Z"
+  },
+  "strategy2_cursor_seed": {
+    "publicnode": {
+      "accepted": true,
+      "count": 10,
+      "all_type_match": true,
+      "all_older_than_seed": false,
+      "hasNextPage": true
+    },
+    "blockvision": {
+      "accepted": true,
+      "count": 10,
+      "all_type_match": true,
+      "all_older_than_seed": false,
+      "hasNextPage": true
+    },
+    "rpcpool": {
+      "accepted": true,
+      "count": 10,
+      "all_type_match": true,
+      "all_older_than_seed": false,
+      "hasNextPage": true
+    }
+  }
+}
