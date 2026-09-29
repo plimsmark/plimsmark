@@ -8,7 +8,7 @@ loads no external resource.
 import pathlib
 import re
 
-from scripts.build_site import CNAME, load_data, render
+from scripts.build_site import CNAME, FIXTURE_LINKS, load_data, render
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -242,3 +242,59 @@ def test_finding_e_route_map_blocked_and_open_channel():
         assert token in sec2, f"route map missing {token!r}"
     # a blocked channel and an open one
     assert "blocked" in sec2.lower() and "open" in sec2.lower()
+
+
+# ---------------- Item 15: sections 3-6 ----------------
+
+def test_section3_pipeline_stages_in_order():
+    sec3 = _section(render(load_data(ROOT)), "sec-3")
+    assert 'class="pipeline"' in sec3, "no pipeline visual"
+    stages = ["providers", "pagination", "identity match", "self-consistency", "verdict"]
+    positions = [sec3.lower().find(s) for s in stages]
+    assert all(p >= 0 for p in positions), f"missing pipeline stage: {stages}"
+    assert positions == sorted(positions), "pipeline stages out of order"
+
+
+def test_section3_pipeline_nodes_light_in_sequence_only_under_js():
+    """Nodes are fully visible by default; the staggered light-up is JS-only."""
+    html = render(load_data(ROOT))
+    # the lit state is gated behind .js-anim so no-JS keeps every node visible
+    assert re.search(r"\.js-anim[^{]*\.pipe-node", html), (
+        "pipeline light-up must be scoped under .js-anim"
+    )
+
+
+def test_section4_loadline_gauge_marks_each_limit():
+    sec4 = _section(render(load_data(ROOT)), "sec-4")
+    assert 'class="loadline"' in sec4, "no vertical Plimsoll load-line gauge"
+    marks = re.findall(r'class="ll-mark', sec4)
+    assert len(marks) >= 5, f"expected a mark per limit, found {len(marks)}"
+
+
+def test_section5_cargo_manifest_links_every_fixture():
+    sec5 = _section(render(load_data(ROOT)), "sec-5")
+    assert 'class="manifest"' in sec5, "no cargo-manifest grid"
+    cards = re.findall(r'class="manifest-card', sec5)
+    assert len(cards) == len(FIXTURE_LINKS), (
+        f"manifest has {len(cards)} cards, expected {len(FIXTURE_LINKS)}"
+    )
+    for _label, path in FIXTURE_LINKS:
+        assert f"/{path}" in sec5, f"manifest missing GitHub link for {path}"
+
+
+def test_section6_amendment_strikes_old_and_writes_corrected():
+    d = load_data(ROOT)
+    sec6 = _section(render(d), "sec-6")
+    assert 'class="amendment"' in sec6, "no ship's-log amendment"
+    struck = re.search(r'class="struck"[^>]*>(.*?)</p>', sec6, flags=re.DOTALL)
+    corrected = re.search(r'class="corrected"[^>]*>(.*?)</p>', sec6, flags=re.DOTALL)
+    assert struck, "no struck-through old claim"
+    assert corrected, "no corrected claim written beneath"
+    assert "partial" in struck.group(1).lower() or "stale" in struck.group(1).lower()
+
+
+def test_section6_strike_animation_is_js_only():
+    """The strike-through draws under JS; with JS off the old claim is already
+    struck (line-through) and the correction already written."""
+    html = render(load_data(ROOT))
+    assert re.search(r"\.js-anim[^{]*\.struck", html), "strike animation must be JS-scoped"

@@ -342,6 +342,67 @@ figure{margin:0}
 .route-legend .blocked::before{content:"✕"; position:absolute; left:0; color:#ff9a9a}
 .route-legend .open::before{content:"✓"; position:absolute; left:0; color:var(--accent)}
 
+/* ---- section 3: verdict pipeline ---- */
+.pipeline{margin:0 0 .4em; padding:14px 16px; background:var(--card);
+  border:1px solid var(--line); border-radius:10px}
+.pipe-flow{display:flex; align-items:stretch; flex-wrap:wrap; gap:.5rem}
+.pipe-node{display:flex; flex-direction:column; gap:.1em; justify-content:center;
+  border:1px solid var(--line); border-radius:8px; padding:.45em .6em; min-width:96px;
+  background:rgba(255,255,255,.04); font-size:.82rem}
+.pipe-node b{color:#fff} .pipe-node small{color:var(--muted)}
+.pipe-node.last{border-color:var(--accent); background:rgba(99,216,206,.12)}
+.pipe-node.last small{color:var(--accent); font-weight:700; letter-spacing:.5px}
+.pipe-link{align-self:center; color:var(--muted)}
+.js-anim .reveal .pipe-node{opacity:.3; filter:saturate(.5)}
+.js-anim .reveal.shown .pipe-node{opacity:1; filter:none;
+  transition:opacity .45s ease, filter .45s ease; transition-delay:calc(var(--i) * .28s)}
+
+/* ---- section 4: vertical load-line gauge ---- */
+.loadline{padding:6px 4px}
+.ll-rail{display:flex; align-items:flex-start; gap:1rem; padding:.4em .2em}
+.ll-disc{width:52px; height:52px; color:var(--accent); flex:0 0 auto; margin-top:2px}
+.ll-marks{list-style:none; margin:0; padding:0; position:relative; flex:1 1 auto}
+.ll-marks::before{content:""; position:absolute; left:34px; top:10px; bottom:10px;
+  width:3px; background:linear-gradient(var(--accent),rgba(99,216,206,.25))}
+.ll-mark{display:flex; align-items:baseline; gap:.7rem; padding:.4em 0; position:relative}
+.ll-code{flex:0 0 26px; text-align:right; font-weight:700; color:var(--accent);
+  font-variant-numeric:tabular-nums; font-size:.82rem}
+.ll-tick{flex:0 0 18px; height:3px; background:var(--accent); align-self:center;
+  margin-top:2px; border-radius:2px}
+.ll-text{flex:1 1 auto; font-size:.92rem}
+
+/* ---- section 5: cargo manifest grid ---- */
+.manifest{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:.7rem; margin:.6em 0}
+.manifest-card{display:flex; flex-direction:column; gap:.15em; text-decoration:none;
+  color:var(--ink); border:1px solid var(--line); border-left:3px solid var(--accent);
+  border-radius:8px; padding:.6em .7em; background:var(--card);
+  transition:transform .2s ease, background .2s ease, border-color .2s ease}
+.manifest-card:hover, .manifest-card:focus-visible{transform:translateY(-2px);
+  background:rgba(99,216,206,.1); border-left-color:#fff}
+.mf-file{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.82rem; color:#fff}
+.mf-label{font-size:.82rem; color:var(--muted)}
+.mf-path{font-size:.72rem; color:var(--accent); max-height:0; opacity:0; overflow:hidden;
+  transition:max-height .25s ease, opacity .25s ease}
+.manifest-card:hover .mf-path, .manifest-card:focus-visible .mf-path{max-height:2.4em; opacity:1}
+
+/* ---- section 6: ship's-log amendment ---- */
+.amendment{padding:14px 16px; background:var(--card); border:1px solid var(--line);
+  border-radius:10px; border-left:3px solid #ffb46e}
+.struck{position:relative; color:var(--muted); text-decoration:line-through;
+  text-decoration-color:#ff9a9a; text-decoration-thickness:2px; margin:.2em 0}
+.corrected{margin:.5em 0 .2em}
+.amend-tag{display:inline-block; font-size:.68rem; letter-spacing:.12em; text-transform:uppercase;
+  color:#ffcf9e; border:1px solid rgba(255,180,110,.5); border-radius:4px; padding:0 .4em;
+  margin-right:.4em; transform:rotate(-3deg)}
+.js-anim .reveal .struck{text-decoration:none}
+.js-anim .reveal .struck::after{content:""; position:absolute; left:0; top:50%; height:2px;
+  width:0; background:#ff9a9a}
+.js-anim .reveal.shown .struck::after{width:100%; transition:width .6s ease .2s}
+.js-anim .reveal .corrected{opacity:0; transform:translateY(6px)}
+.js-anim .reveal.shown .corrected{opacity:1; transform:none;
+  transition:opacity .5s ease .7s, transform .5s ease .7s}
+
 footer{max-width:760px; margin:0 auto; padding:2.5rem 20px 4rem; color:var(--muted); font-size:.86rem}
 
 /* ---- progressive enhancement: reveal ONLY hidden when JS is on ---- */
@@ -366,6 +427,10 @@ footer{max-width:760px; margin:0 auto; padding:2.5rem 20px 4rem; color:var(--mut
   *,*::before,*::after{animation:none !important; transition:none !important}
   .js-anim .reveal{opacity:1 !important; transform:none !important}
   .js-anim .reveal .stamp{opacity:.82 !important; transform:rotate(-7deg) !important}
+  .js-anim .reveal .pipe-node{opacity:1 !important; filter:none !important}
+  .js-anim .reveal .struck{text-decoration:line-through !important}
+  .js-anim .reveal .struck::after{width:0 !important}
+  .js-anim .reveal .corrected{opacity:1 !important; transform:none !important}
 }
 """
 
@@ -579,6 +644,93 @@ def _fig_route():
     )
 
 
+# ---- Sections 3-6 visuals ----
+
+def _fig_pipeline(n_providers, verdict):
+    """(S3) The verdict pipeline; nodes light in sequence on scroll."""
+    stages = [
+        ("providers", f"{n_providers} endpoints"),
+        ("pagination", "cursor to end"),
+        ("identity match", "(txDigest, seq)"),
+        ("self-consistency", "×2 per query"),
+        ("verdict", html.escape(verdict)),
+    ]
+    nodes = ""
+    for i, (name, sub) in enumerate(stages):
+        if i:
+            nodes += '<span class="pipe-link" aria-hidden="true">→</span>'
+        last = ' last' if i == len(stages) - 1 else ''
+        nodes += (
+            f'<span class="pipe-node{last}" style="--i:{i}">'
+            f'<b>{html.escape(name)}</b><small>{sub}</small></span>'
+        )
+    return (
+        '<figure class="pipeline" aria-label="Method pipeline: providers, '
+        'pagination, identity match, self-consistency (twice), verdict.">'
+        f'<div class="pipe-flow">{nodes}</div>'
+        '<figcaption class="caption">Each query runs the full pipeline; a stage that '
+        'cannot complete cleanly yields <em>unknown</em> (null), never zero.</figcaption>'
+        '</figure>'
+    )
+
+
+def _fig_loadline(limits):
+    """(S4) A vertical Plimsoll load-line gauge; each limit is a marked line."""
+    disc = (
+        '<svg class="ll-disc" viewBox="0 0 60 60" aria-hidden="true" fill="none" '
+        'stroke="currentColor" stroke-width="4">'
+        '<line x1="4" y1="30" x2="56" y2="30"/><circle cx="30" cy="30" r="16"/></svg>'
+    )
+    marks = ""
+    for i, text in enumerate(limits, start=1):
+        marks += (
+            f'<li class="ll-mark"><span class="ll-code">L{i}</span>'
+            f'<span class="ll-tick" aria-hidden="true"></span>'
+            f'<span class="ll-text">{text}</span></li>'
+        )
+    return (
+        '<figure class="loadline" aria-label="Limits drawn as marks on a Plimsoll '
+        'load line: each line marks how far this spike can be safely loaded.">'
+        f'<div class="ll-rail">{disc}<ol class="ll-marks">{marks}</ol></div>'
+        '<figcaption class="caption">Like a ship\'s load line, each mark is a limit on '
+        'how heavily these findings can be loaded — read below the line, not above it.</figcaption>'
+        '</figure>'
+    )
+
+
+def _fig_manifest():
+    """(S5) A cargo-manifest grid of fixture files; hover/focus reveals the path."""
+    cards = ""
+    for label, path in FIXTURE_LINKS:
+        fname = path.rsplit("/", 1)[-1]
+        cards += (
+            f'<a class="manifest-card" href="{REPO_URL}/{path}">'
+            f'<span class="mf-file">{html.escape(fname)}</span>'
+            f'<span class="mf-label">{html.escape(label)}</span>'
+            f'<span class="mf-path">{html.escape(path)}</span></a>'
+        )
+    return f'<div class="manifest">{cards}</div>'
+
+
+def _fig_amendment(d, e):
+    """(S6) The old claim struck through, the correction written beneath."""
+    q1 = d["q1_count"]
+    q1b = d["q1b_count"]
+    return (
+        '<figure class="amendment" aria-label="Ship\'s-log amendment: the earlier '
+        'claim struck through, the correction written beneath.">'
+        f'<p class="struck">Earlier claim: publicnode\'s {q1}-event '
+        '<code>0x2::coin</code> answer was a <em>partial or stale</em> event index.</p>'
+        f'<p class="corrected"><span class="amend-tag">amended</span> The {q1} events are '
+        '<code>deny_list::PerTypeConfigCreated</code>, returned identically by all three '
+        'JSON-RPC providers; <code>MoveModule</code> matches the transaction\'s called '
+        f'module, not the event type. The genuine type count is {q1b}, agreed by all four.</p>'
+        f'<p class="kv">See <a href="{REPO_URL}/fixtures/corrections_{DATE}.md">'
+        f'corrections_{DATE}.md</a>.</p>'
+        '</figure>'
+    )
+
+
 def _providers_rows(cfg):
     rows = ""
     for name, v in cfg["providers"].items():
@@ -654,10 +806,6 @@ def render(d: dict) -> str:
     lag_lo = ts["lag_min"] / 1000.0
     lag_hi = ts["lag_max"] / 1000.0
 
-    ev_links = "".join(
-        f'<li><a href="{REPO_URL}/{path}">{e(label)}</a> — <span class="kv">{e(path)}</span></li>'
-        for label, path in FIXTURE_LINKS
-    )
     win_rows = "".join(
         f"<tr><td>{e(w['label'])}</td><td>{w['c_start']:,}–{w['c_end']:,}</td>"
         f"<td>{e(w['ts_c_start'][:19])}Z</td></tr>"
@@ -758,6 +906,7 @@ def render(d: dict) -> str:
   {wave('var(--sea3)')}
   <div class="inner reveal">
     <h2><span class="n">3</span> Method</h2>
+    {_fig_pipeline(len(cfg['providers']), d['verdict'])}
     <ul>
       <li><strong>Comparable predicate.</strong> Compare only what means the same thing on both
         paradigms: the event <em>struct type</em> (<code>MoveEventType</code> == GraphQL
@@ -789,14 +938,14 @@ def render(d: dict) -> str:
   {wave('var(--sea4)')}
   <div class="inner reveal">
     <h2><span class="n">4</span> Limits</h2>
-    <ul>
-      <li>A ~20-minute snapshot on {DATE}, not continuous monitoring.</li>
-      <li>A single network vantage (<code>{e(r1['vantage'])}</code>).</li>
-      <li>One GraphQL provider (Mysten); GraphQL claims rest on it alone.</li>
-      <li>The three JSON-RPC providers may run shared indexer software, so their agreement is
-        not four fully independent implementations.</li>
-      <li>The oldest window held only one matching event, so it is weak evidence on its own.</li>
-    </ul>
+    {_fig_loadline([
+      f"A ~20-minute snapshot on {DATE}, not continuous monitoring.",
+      f"A single network vantage (<code>{e(r1['vantage'])}</code>).",
+      "One GraphQL provider (Mysten); GraphQL claims rest on it alone.",
+      "The three JSON-RPC providers may run shared indexer software, so their agreement "
+      "is not four fully independent implementations.",
+      "The oldest window held only one matching event, so it is weak evidence on its own.",
+    ])}
   </div>
 </section>
 """
@@ -806,12 +955,11 @@ def render(d: dict) -> str:
   {wave('var(--sea5)')}
   <div class="inner reveal">
     <h2><span class="n">5</span> Evidence</h2>
-    <p>Every claim above is backed by a committed file. Raw responses, per-request observation
-    rows (timestamp, provider, latency, bytes, error class + verbatim message), and the
-    verdict computation are all in the repository.</p>
-    <ul>
-      {ev_links}
-    </ul>
+    <p>Every claim above is backed by a committed file — the ship's cargo manifest. Raw
+    responses, per-request observation rows (timestamp, provider, latency, bytes, error
+    class + verbatim message), and the verdict computation are all in the repository.
+    Each card links to the file on GitHub.</p>
+    {_fig_manifest()}
   </div>
 </section>
 """
@@ -821,11 +969,9 @@ def render(d: dict) -> str:
   {wave('var(--sea6)')}
   <div class="inner reveal">
     <h2><span class="n">6</span> Correction</h2>
-    <p>An earlier spike read publicnode's {d['q1_count']}-event <code>0x2::coin</code> answer as
-    a partial or stale index. That is refuted here: the {d['q1_count']} events are
-    <code>deny_list::PerTypeConfigCreated</code>, returned identically by all three JSON-RPC
-    providers; <code>MoveModule</code> matches the called module, not the event type. See
-    <a href="{REPO_URL}/fixtures/corrections_{DATE}.md">corrections_{DATE}.md</a>.</p>
+    <p>A premise spike corrects its own record. An earlier reading is struck and amended,
+    the way a ship's log is corrected — the original left legible beneath the line.</p>
+    {_fig_amendment(d, e)}
   </div>
 </section>
 """
