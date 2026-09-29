@@ -193,3 +193,52 @@ def test_section1_countups_target_agreed_values():
     targets = set(re.findall(r'data-count="([0-9]+)"', sec1))
     assert str(d["q1_count"]) in targets, "Q1 count-up missing in section 1"
     assert str(d["q1b_count"]) in targets, "Q1b count-up missing in section 1"
+
+
+# ---------------- Item 14: section 2 finding micro-visuals ----------------
+
+def test_finding_a_terminal_types_verbatim_32601():
+    d = load_data(ROOT)
+    sec2 = _section(render(d), "sec-2")
+    assert 'class="terminal"' in sec2, "no terminal micro-visual"
+    # the verbatim message must be present as static text (typing is JS-only)
+    assert d["msg_32601"] is not None
+    # full verbatim message lives inside the terminal element
+    m = re.search(r'class="terminal".*?</figure>', sec2, flags=re.DOTALL)
+    assert "JSON-RPC on public fullnodes has been deprecated" in m.group(0)
+    assert "-32601" in m.group(0)
+
+
+def test_finding_b_module_vs_event_type_diagram():
+    sec2 = _section(render(load_data(ROOT)), "sec-2")
+    assert 'class="diagram"' in sec2, "no MoveModule-vs-type diagram"
+    for token in ("called module", "event type", "0x2::coin", "deny_list"):
+        assert token in sec2, f"diagram missing {token!r}"
+
+
+def test_finding_c_sonar_scan_budget_trap():
+    sec2 = _section(render(load_data(ROOT)), "sec-2")
+    assert 'class="sonar"' in sec2, "no sonar sweep visual"
+    for token in ("0 nodes", "hasNextPage", "not empty"):
+        assert token in sec2, f"sonar missing {token!r}"
+
+
+def test_finding_d_timeline_shows_ms_drift_from_fixtures():
+    d = load_data(ROOT)
+    sec2 = _section(render(d), "sec-2")
+    assert 'class="timeline"' in sec2, "no timestamp-drift timeline"
+    tl = re.search(r'class="timeline".*?</figure>', sec2, flags=re.DOTALL).group(0)
+    assert str(d["ts"]["lag_min"]) in tl, "timeline missing lag_min (ms) from fixtures"
+    assert str(d["ts"]["lag_max"]) in tl, "timeline missing lag_max (ms) from fixtures"
+    assert "ms" in tl
+    # labelled per the item-8 conclusion: GraphQL matches the chain, legacy is late
+    assert "checkpoint" in tl.lower() and "json-rpc" in tl.lower()
+
+
+def test_finding_e_route_map_blocked_and_open_channel():
+    sec2 = _section(render(load_data(ROOT)), "sec-2")
+    assert 'class="route"' in sec2, "no route-map visual"
+    for token in ("Invalid params", "cursor"):
+        assert token in sec2, f"route map missing {token!r}"
+    # a blocked channel and an open one
+    assert "blocked" in sec2.lower() and "open" in sec2.lower()
