@@ -134,3 +134,62 @@ def test_no_js_view_contains_all_section_headings():
     without_js = re.sub(r"<script\b[^>]*>.*?</script>", "", html, flags=re.DOTALL)
     for heading in ("verdict", "Findings", "Method", "Limits", "Evidence", "Correction"):
         assert heading in without_js, f"heading {heading!r} missing from no-JS view"
+
+
+# ---------------- Item 13: hero + section 1 ----------------
+
+def _section(html, sid):
+    """Slice out one <section id="sid"> ... </section> block."""
+    m = re.search(rf'<section id="{sid}".*?</section>', html, flags=re.DOTALL)
+    assert m, f"section {sid} not found"
+    return m.group(0)
+
+
+def test_hero_has_plimsoll_mark_on_the_waterline():
+    html = render(load_data(ROOT))
+    hero = _section_or_hero(html, "hero")
+    assert 'class="buoy"' in hero, "hero missing waterline Plimsoll buoy mark"
+    # the buoy is a Plimsoll mark: circle + bisecting line inside the hero SVG scene
+    assert "<circle" in hero and "<line" in hero
+
+
+def _section_or_hero(html, sid):
+    m = re.search(rf'<section id="{sid}".*?</section>', html, flags=re.DOTALL)
+    assert m, f"section {sid} not found"
+    return m.group(0)
+
+
+def test_section1_shows_four_ships_one_per_provider():
+    d = load_data(ROOT)
+    html = render(d)
+    sec1 = _section(html, "sec-1")
+    ships = re.findall(r'class="ship\b', sec1)
+    assert len(ships) == 4, f"expected 4 ships, found {len(ships)}"
+    # each ship is labelled with a provider id read from the fixtures
+    for provider in d["cfg"]["providers"]:
+        assert provider in sec1, f"ship label missing provider {provider}"
+
+
+def test_section1_ships_share_one_waterline():
+    """Agreement is drawn as four ships level on a single waterline."""
+    html = render(load_data(ROOT))
+    sec1 = _section(html, "sec-1")
+    assert 'class="waterline"' in sec1 or "waterline" in sec1
+
+
+def test_section1_has_refuted_ink_stamp():
+    d = load_data(ROOT)
+    html = render(d)
+    sec1 = _section(html, "sec-1")
+    m = re.search(r'class="stamp"[^>]*>(.*?)</', sec1, flags=re.DOTALL)
+    assert m, "no REFUTED ink stamp element in section 1"
+    assert d["verdict"] in m.group(1), "stamp does not carry the verdict text"
+
+
+def test_section1_countups_target_agreed_values():
+    d = load_data(ROOT)
+    html = render(d)
+    sec1 = _section(html, "sec-1")
+    targets = set(re.findall(r'data-count="([0-9]+)"', sec1))
+    assert str(d["q1_count"]) in targets, "Q1 count-up missing in section 1"
+    assert str(d["q1b_count"]) in targets, "Q1b count-up missing in section 1"

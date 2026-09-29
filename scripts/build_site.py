@@ -236,6 +236,31 @@ th{background:rgba(255,255,255,.06); color:#fff}
   text-transform:uppercase}
 .scrollcue span{display:inline-block; animation:bob 2.4s ease-in-out infinite}
 @keyframes bob{0%,100%{transform:translateY(0)} 50%{transform:translateY(5px)}}
+#hero .buoy{position:absolute; z-index:1; right:15%; bottom:33%; width:64px; height:64px;
+  color:#fff; filter:drop-shadow(0 3px 6px rgba(0,0,0,.35)); animation:buoybob 3.6s ease-in-out infinite}
+@keyframes buoybob{0%,100%{transform:translateY(0) rotate(-4deg)} 50%{transform:translateY(-9px) rotate(4deg)}}
+
+/* ---- section 1: fleet of agreement + ink stamp ---- */
+.verdict-row{display:flex; align-items:center; gap:1.2rem; flex-wrap:wrap}
+.verdict-row p{margin:.3em 0; flex:1 1 260px}
+.stamp{display:inline-block; color:#d9ede9; border:3px double #63d8ce; border-radius:8px;
+  padding:.2em .7em; font-weight:800; letter-spacing:3px; font-size:1.05rem;
+  transform:rotate(-7deg); opacity:.82; text-transform:uppercase; flex:0 0 auto;
+  box-shadow:inset 0 0 0 1px rgba(99,216,206,.25)}
+.js-anim .reveal .stamp{opacity:0; transform:rotate(-7deg) scale(1.7)}
+.js-anim .reveal.shown .stamp{opacity:.82; transform:rotate(-7deg) scale(1);
+  transition:opacity .35s .35s ease, transform .4s .35s cubic-bezier(.2,1.5,.4,1)}
+.ships-fig{margin:1.4em 0 .6em}
+.ships{width:100%; height:auto; display:block}
+.ships .waterline{stroke-dasharray:0}
+.ships .ship{animation:shipbob 4.6s ease-in-out infinite; transform-box:fill-box; transform-origin:center}
+.ships .ship:nth-of-type(2){animation-delay:-.6s}
+.ships .ship:nth-of-type(3){animation-delay:-1.2s}
+.ships .ship:nth-of-type(4){animation-delay:-1.8s}
+@keyframes shipbob{0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)}}
+.ships .shiplabel{fill:#eaf3f5; font-size:12px; font-family:inherit; font-weight:600}
+.ships .shippar{fill:#a9c2cc; font-size:10px; font-family:inherit; letter-spacing:.04em}
+.caption{color:var(--muted); font-size:.86rem; margin:.5em 0 0; text-align:center}
 
 /* ---- depth gauge (fixed side rail on desktop, bottom bar on mobile) ---- */
 .gauge{position:fixed; z-index:20; left:14px; top:50%; transform:translateY(-50%)}
@@ -277,6 +302,7 @@ footer{max-width:760px; margin:0 auto; padding:2.5rem 20px 4rem; color:var(--mut
   html{scroll-behavior:auto}
   *,*::before,*::after{animation:none !important; transition:none !important}
   .js-anim .reveal{opacity:1 !important; transform:none !important}
+  .js-anim .reveal .stamp{opacity:.82 !important; transform:rotate(-7deg) !important}
 }
 """
 
@@ -330,6 +356,43 @@ JS = """
 """
 
 
+def _ship(x, name, paradigm):
+    """One ship, drawn at local x. Sail tone marks the paradigm; the hull sits
+    on the shared waterline so four level ships read as 'agreement'."""
+    sail = "#bfeee8" if paradigm == "graphql" else "#eaf3f5"
+    return (
+        f'<g class="ship" transform="translate({x},0)">'
+        f'<line class="mast" x1="0" y1="52" x2="0" y2="112" stroke="#eaf3f5" stroke-width="3"/>'
+        f'<path class="sail" d="M5,56 L5,104 L44,104 Z" fill="{sail}"/>'
+        f'<path class="hull" d="M-40,110 L40,110 L28,128 L-28,128 Z" fill="#0a3a44" '
+        f'stroke="#eaf3f5" stroke-width="2"/>'
+        f'<text class="shiplabel" x="0" y="150" text-anchor="middle">{html.escape(name)}</text>'
+        f'<text class="shippar" x="0" y="166" text-anchor="middle">{html.escape(paradigm)}</text>'
+        f'</g>'
+    )
+
+
+def _ships(cfg):
+    provs = list(cfg["providers"].items())
+    xs = [110, 300, 490, 680] if len(provs) == 4 else [
+        int(90 + i * (620 / max(1, len(provs) - 1))) for i in range(len(provs))
+    ]
+    ships = "".join(_ship(x, name, v["paradigm"]) for x, (name, v) in zip(xs, provs))
+    return (
+        '<figure class="ships-fig">'
+        '<svg class="ships" viewBox="0 0 790 180" role="img" '
+        'aria-label="Four RPC providers drawn as four ships riding level on one '
+        'waterline — a picture of agreement.">'
+        '<path class="waterline" fill="none" stroke="#63d8ce" stroke-width="2.5" '
+        'd="M0,120 C130,112 250,128 395,120 C540,112 660,128 790,120"/>'
+        f'{ships}'
+        '</svg>'
+        '<figcaption class="caption">Four providers, one waterline: identical id sets, '
+        'level trim. No ship rides lower than the others.</figcaption>'
+        '</figure>'
+    )
+
+
 def _providers_rows(cfg):
     rows = ""
     for name, v in cfg["providers"].items():
@@ -372,9 +435,15 @@ def _hero(d):
         'd="M0,700 C260,660 520,740 780,700 C1020,665 1220,735 1440,700 L2880,700 L2880,900 L0,900 Z"/>'
         '</svg>'
     )
+    buoy = (
+        '<svg class="buoy" viewBox="0 0 100 100" aria-hidden="true" fill="none" '
+        'stroke="currentColor" stroke-width="6">'
+        '<line x1="4" y1="50" x2="96" y2="50"/><circle cx="50" cy="50" r="26"/></svg>'
+    )
     return f"""
 <section id="hero">
   {sky}
+  {buoy}
   <div class="inner">
     <div class="brand">
       {LOGO}
@@ -416,9 +485,13 @@ def render(d: dict) -> str:
     <h2><span class="n">1</span> The question, and the verdict</h2>
     <p class="lede"><strong>Question tested:</strong> do Sui mainnet RPC providers return
     different answers to the same question — event index completeness or freshness?</p>
-    <p>Verdict: <span class="verdict">{e(d['verdict'])}</span>. For the pinned queries,
-    the providers do <strong>not</strong> disagree on completeness or freshness. Two runs,
-    &gt;10&nbsp;minutes apart, each JSON-RPC query issued twice per provider for
+    <div class="verdict-row">
+      <p>Verdict: <span class="verdict">{e(d['verdict'])}</span>. For the pinned queries,
+      the providers do <strong>not</strong> disagree on completeness or freshness.</p>
+      <span class="stamp" role="img" aria-label="Verdict stamp: {e(d['verdict'])}">{e(d['verdict'])}</span>
+    </div>
+    {_ships(cfg)}
+    <p>Two runs, &gt;10&nbsp;minutes apart, each JSON-RPC query issued twice per provider for
     self-consistency. Every JSON-RPC provider returned exactly
     {count(d['q1_count'])} events for the <code>0x2::coin</code> module query and
     {count(d['q1b_count'])} for the deny-list event type — identical id sets.</p>
