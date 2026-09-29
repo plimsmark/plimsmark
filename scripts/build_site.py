@@ -66,6 +66,35 @@ def _latencies(root, providers):
     return out
 
 
+def _q1b_pages(root, q1b_type):
+    """The real page-by-page Q1b full-history GraphQL scan from run 1.
+
+    Source: observation rows of fixtures/premise_{DATE}_run1.jsonl.gz with
+    provider == "mysten_graphql" and params.filter.type == the Q1b type (in
+    request order); each page's node count is len(data.events.nodes) and its
+    flag data.events.pageInfo.hasNextPage, read from the committed raw body at
+    fixtures/<raw_path>. (No committed page anywhere has 0 nodes +
+    hasNextPage:true, so this is a substitute for the scan-budget trap.)
+    """
+    pages = []
+    with gzip.open(root / "fixtures" / f"premise_{DATE}_run1.jsonl.gz", "rt") as f:
+        for line in f:
+            r = json.loads(line)
+            p = r.get("params") or {}
+            if (r.get("kind") == "observation" and r["provider"] == "mysten_graphql"
+                    and isinstance(p, dict) and "first" in p
+                    and p.get("filter", {}).get("type") == q1b_type):
+                with gzip.open(root / "fixtures" / r["raw_path"], "rt") as b:
+                    ev = json.load(b)["data"]["events"]
+                pages.append({
+                    "raw_path": r["raw_path"],
+                    "first": p["first"],
+                    "nodes": len(ev["nodes"]),
+                    "has_next": ev["pageInfo"]["hasNextPage"],
+                })
+    return pages
+
+
 def _extract_fence(text, marker):
     m = re.search(re.escape(marker) + r".*?```[a-z]*\n(.*?)\n```", text, re.DOTALL)
     return m.group(1).strip() if m else None
@@ -79,6 +108,10 @@ def load_data(root: pathlib.Path) -> dict:
 
     q1_count = res1["Q1"][("publicnode", "a")]["completeness"]
     q1b_count = res1["Q1b"][("publicnode", "a")]["completeness"]
+    q1b_pages = _q1b_pages(root, cfg["queries"]["Q1b"]["types"][0])
+    gql_q1b = res1["Q1b"][("mysten_graphql", "single")]["completeness"]
+    if sum(pg["nodes"] for pg in q1b_pages) != gql_q1b:
+        raise ValueError("Q1b raw pages do not sum to the recorded GraphQL result")
 
     premise = (root / "fixtures" / f"premise_{DATE}.md").read_text()
     vm = re.search(r"^###\s*→\s*(.+?)\s*$", premise, re.MULTILINE)
@@ -113,6 +146,7 @@ def load_data(root: pathlib.Path) -> dict:
         "verdict": verdict,
         "msg_32601": msg_32601,
         "latency": _latencies(root, list(cfg["providers"])),
+        "q1b_pages": q1b_pages,
         "ts": {
             "n": len(gt["rows"]),
             "lag_min": min(lags),
@@ -360,12 +394,21 @@ figure{margin:0}
 .dg-op,.dg-drop{color:var(--muted); font-size:.85rem}
 .dg-drop{margin:.5em 0 .4em}
 
-/* (c) sonar */
+/* (c) sonar-style pagination step chart (real page sizes) */
 .sonar{text-align:center}
-.sonar-scope{position:relative; display:inline-block; width:min(240px,70%)}
+.sonar-scope{position:relative; display:block; max-width:480px; margin:0 auto;
+  background:radial-gradient(ellipse at 50% 60%,rgba(99,216,206,.10),rgba(2,16,24,.55) 75%);
+  border:1px solid rgba(99,216,206,.28); border-radius:12px; padding:6px 4px 2px}
 .sonar-scope svg{width:100%; height:auto; display:block}
-.sonar .sweep{transform-origin:80px 80px; animation:sweep 4s linear infinite}
-@keyframes sweep{from{transform:rotate(0)} to{transform:rotate(360deg)}}
+.sonar .pg-grid{stroke:rgba(99,216,206,.16)}
+.sonar .pg-axis{stroke:rgba(255,255,255,.35)}
+.sonar .pg-tick{fill:#a9c2cc; font-size:12px; font-family:inherit; font-variant-numeric:tabular-nums}
+.sonar .pg-lbl{fill:#eaf3f5; font-size:12.5px; font-family:inherit}
+.sonar .seabed{fill:none; stroke:#63d8ce; stroke-width:2; filter:drop-shadow(0 0 3px rgba(99,216,206,.7))}
+.sonar .pg-dot{fill:#63d8ce}
+.sonar .pg-dot.end{fill:#fff; stroke:#63d8ce; stroke-width:2}
+.sonar .sweep{animation:sweepx 5s linear infinite}
+@keyframes sweepx{from{transform:translateX(0)} to{transform:translateX(290px)}}
 .sonar-read{display:block; margin-top:.3em; font-size:.8rem; color:var(--muted)}
 
 /* (d) timeline */
@@ -479,6 +522,7 @@ footer{max-width:760px; margin:0 auto; padding:2.5rem 20px 4rem; color:var(--mut
   .js-anim .reveal .struck{text-decoration:line-through !important}
   .js-anim .reveal .struck::after{width:0 !important}
   .js-anim .reveal .corrected{opacity:1 !important; transform:none !important}
+  .sonar .sweep{display:none}
 }
 """
 
@@ -702,28 +746,90 @@ def _fig_diagram(ev_type):
     )
 
 
-def _fig_sonar():
-    """(c) A sonar sweep over an empty-looking seabed."""
+# Pagination chart plot box inside its 340x220 viewBox.
+PG_X0, PG_X1, PG_Y0, PG_Y1 = 52.0, 326.0, 174.0, 22.0
+
+
+def _fig_sonar(pages, q1b_type):
+    """(c) Sonar-style step chart of a REAL paginated GraphQL scan: x = page,
+    y = cumulative events. Every vertex comes from `pages` (_q1b_pages():
+    len(data.events.nodes) per committed raw body of the run-1 Q1b scan).
+    The sweep bar is decoration only; the trace is the data."""
+    n = len(pages)
+    total = sum(pg["nodes"] for pg in pages)
+
+    def x(i):
+        return f"{PG_X0 + (PG_X1 - PG_X0) * i / n:.1f}"
+
+    def y(c):
+        return f"{PG_Y0 - (PG_Y0 - PG_Y1) * c / total:.1f}"
+
+    cum, d, dots = 0, f"M{x(0)},{y(0)}", ""
+    for i, pg in enumerate(pages, start=1):
+        cum += pg["nodes"]
+        d += f" V{y(cum)} H{x(i)}"
+        end = " end" if i == n else ""
+        dots += (
+            f'<circle class="pg-dot{end}" cx="{x(i)}" cy="{y(cum)}" r="{3.5 if end else 2.2}" '
+            f'data-page="{i}" data-nodes="{pg["nodes"]}" data-cum="{cum}" '
+            f'data-has-next="{str(pg["has_next"]).lower()}">'
+            f'<title>page {i}: {pg["nodes"]} nodes, {cum} cumulative, '
+            f'hasNextPage {str(pg["has_next"]).lower()}</title></circle>'
+        )
+    step = 500 if total > 1000 else 100
+    yticks = list(range(0, total, step)) + [total]
+    ygrid = "".join(
+        f'<line class="pg-grid" x1="{PG_X0}" x2="{PG_X1}" y1="{y(v)}" y2="{y(v)}"/>'
+        f'<text class="pg-tick" x="{PG_X0 - 5}" y="{float(y(v)) + 3.5:.1f}" '
+        f'text-anchor="end">{v:,}</text>'
+        for v in yticks
+    )
+    xticks = sorted({1, n} | set(range(10, n, 10)))
+    xgrid = "".join(
+        f'<text class="pg-tick" x="{float(x(i)) - (PG_X1 - PG_X0) / n / 2:.1f}" '
+        f'y="{PG_Y0 + 15}" text-anchor="middle">{i}</text>'
+        for i in xticks
+    )
+    full = sum(1 for pg in pages if pg["nodes"] == pages[0]["first"])
+    last = pages[-1]
+    first_raw = pages[0]["raw_path"].rsplit("/", 1)[-1].split("_")[0]
+    last_raw = last["raw_path"].rsplit("/", 1)[-1].split("_")[0]
+    raw_dir = pages[0]["raw_path"].rsplit("/", 1)[0]
+    all_advance = all(pg["has_next"] for pg in pages[:-1]) and not last["has_next"]
     return (
-        '<figure class="sonar" aria-label="Sonar sweep over a seabed that looks '
-        'empty: a page with 0 nodes but hasNextPage true is not the end of data.">'
+        f'<figure class="sonar" data-pages="{n}" aria-label="Step chart of a real '
+        f'GraphQL events scan: {n} pages, cumulative events rising to {total:,}; no page '
+        'was empty.">'
         '<div class="sonar-scope">'
-        '<svg viewBox="0 0 160 160" aria-hidden="true">'
-        '<defs><radialGradient id="sg" cx="50%" cy="50%" r="50%">'
-        '<stop offset="0" stop-color="#63d8ce" stop-opacity=".55"/>'
-        '<stop offset="1" stop-color="#63d8ce" stop-opacity="0"/></radialGradient></defs>'
-        '<circle cx="80" cy="80" r="70" fill="none" stroke="rgba(255,255,255,.14)"/>'
-        '<circle cx="80" cy="80" r="46" fill="none" stroke="rgba(255,255,255,.14)"/>'
-        '<circle cx="80" cy="80" r="22" fill="none" stroke="rgba(255,255,255,.14)"/>'
-        '<path class="seabed" d="M12,120 C46,110 70,128 96,118 C120,110 140,122 148,116" '
-        'fill="none" stroke="rgba(255,255,255,.3)" stroke-dasharray="4 5"/>'
-        '<g class="sweep"><path d="M80,80 L80,10 A70,70 0 0 1 140,52 Z" fill="url(#sg)"/></g>'
+        '<svg viewBox="0 0 340 220" role="img" aria-label="Cumulative events by page">'
+        '<defs><linearGradient id="sg" x1="0" x2="1">'
+        '<stop offset="0" stop-color="#63d8ce" stop-opacity="0"/>'
+        '<stop offset="1" stop-color="#63d8ce" stop-opacity=".28"/></linearGradient></defs>'
+        f'{ygrid}'
+        f'<line class="pg-axis" x1="{PG_X0}" x2="{PG_X1}" y1="{PG_Y0}" y2="{PG_Y0}"/>'
+        f'<rect class="sweep" x="{PG_X0 - 36}" y="{PG_Y1}" width="36" '
+        f'height="{PG_Y0 - PG_Y1}" fill="url(#sg)" aria-hidden="true"/>'
+        f'<path class="seabed" d="{d}"/>'
+        f'{dots}{xgrid}'
+        f'<text class="pg-lbl" x="{(PG_X0 + PG_X1) / 2}" y="{PG_Y0 + 36}" '
+        f'text-anchor="middle">page (first: {pages[0]["first"]})</text>'
+        f'<text class="pg-lbl" x="11" y="{(PG_Y0 + PG_Y1) / 2}" text-anchor="middle" '
+        f'transform="rotate(-90 11 {(PG_Y0 + PG_Y1) / 2})">cumulative events</text>'
         '</svg>'
-        '<span class="sonar-read">0 nodes · <code>hasNextPage: true</code></span>'
+        f'<span class="sonar-read">{n} pages · {full}×{pages[0]["first"]} + '
+        f'{last["nodes"]} = {total:,} events · <code>hasNextPage: '
+        f'{str(last["has_next"]).lower()}</code> only on page {n}</span>'
         '</div>'
-        '<figcaption class="caption"><strong>0 nodes + hasNextPage: true = not empty.</strong> '
-        'The per-request scan budget ran out before a match. Keep paginating while the cursor '
-        'advances; a stalled cursor is unknown, never zero.</figcaption>'
+        '<figcaption class="caption"><strong>Substitute, not the trap itself:</strong> '
+        'this spike never recorded a page with 0 nodes + <code>hasNextPage: true</code> '
+        '— none of its committed GraphQL responses has one. Drawn instead: the real '
+        f'Q1b full-history scan (GraphQL <code>events</code>, type <code>{html.escape(q1b_type)}</code>, '
+        f'<code>mysten_graphql</code>, run 1, {DATE}), one step per page from '
+        f'<code>fixtures/{html.escape(raw_dir)}/</code> {first_raw}–{last_raw}'
+        + (' — every page advanced the cursor.' if all_advance else '.')
+        + ' The rule for the trap still holds: 0 nodes + <code>hasNextPage: true</code> '
+        '= not empty; keep paginating while the cursor advances, and treat a stalled '
+        'cursor as unknown, never zero.</figcaption>'
         '</figure>'
     )
 
@@ -1009,7 +1115,7 @@ def render(d: dict) -> str:
     <code>pageInfo.hasNextPage</code> is <code>true</code>: the per-request scan budget was
     exhausted before a match, not the end of data. Keep paginating while the cursor advances;
     treat a stalled cursor (no advance) as an incomplete, unknown result — never as an empty set.</p>
-    {_fig_sonar()}
+    {_fig_sonar(d['q1b_pages'], q1b_type)}
 
     <h3>Legacy JSON-RPC event timestamps run a fraction of a second late</h3>
     <p>Across <strong>{ts['n']}</strong> checked transactions, all providers agreed on

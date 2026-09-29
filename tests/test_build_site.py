@@ -386,3 +386,84 @@ def test_latency_axis_labelled_in_ms_with_decade_ticks():
     assert "latency_ms" in fig or "latency (ms)" in fig
     for k in range(lo, hi + 1):
         assert f"{10 ** k:,} ms" in fig, f"missing axis tick {10 ** k:,} ms"
+
+
+# ---------------- Item 18: real pagination step chart (finding c) ----------------
+# No committed row or raw body records a 0-node + hasNextPage:true page, so the
+# chart shows the real Q1b full-history GraphQL scan from run 1 instead. These
+# tests rebuild that page sequence independently from the committed raw bodies.
+
+Q1B_TYPE = "0x2::deny_list::PerTypeConfigCreated"
+
+
+def _fixture_q1b_pages():
+    pages = []
+    with gzip.open(ROOT / "fixtures" / "premise_2026-09-27_run1.jsonl.gz", "rt") as f:
+        for line in f:
+            r = json.loads(line)
+            p = r.get("params") or {}
+            if (r.get("kind") == "observation" and r["provider"] == "mysten_graphql"
+                    and isinstance(p, dict) and "first" in p
+                    and p.get("filter", {}).get("type") == Q1B_TYPE):
+                with gzip.open(ROOT / "fixtures" / r["raw_path"], "rt") as b:
+                    ev = json.load(b)["data"]["events"]
+                pages.append((len(ev["nodes"]), ev["pageInfo"]["hasNextPage"]))
+    return pages
+
+
+def _pager_fig(html):
+    m = re.search(r'<figure class="sonar".*?</figure>', html, flags=re.DOTALL)
+    assert m, "no sonar/pagination figure"
+    return m.group(0)
+
+
+def test_fixture_q1b_scan_really_has_no_empty_trap_page():
+    """Guards the caption's honesty claim: the substitute scan has no 0-node page."""
+    pages = _fixture_q1b_pages()
+    assert pages and all(n > 0 for n, _ in pages)
+    assert sum(n for n, _ in pages) == 1416
+
+
+def test_pager_step_path_is_drawn_from_real_page_sizes():
+    from scripts.build_site import PG_X0, PG_X1, PG_Y0, PG_Y1
+
+    pages = _fixture_q1b_pages()
+    total = sum(n for n, _ in pages)
+    n = len(pages)
+
+    def x(i):
+        return f"{PG_X0 + (PG_X1 - PG_X0) * i / n:.1f}"
+
+    def y(c):
+        return f"{PG_Y0 - (PG_Y0 - PG_Y1) * c / total:.1f}"
+
+    cum, d = 0, f"M{x(0)},{y(0)}"
+    for i, (k, _) in enumerate(pages, start=1):
+        cum += k
+        d += f" V{y(cum)} H{x(i)}"
+    fig = _pager_fig(_section(render(load_data(ROOT)), "sec-2"))
+    assert f'<path class="seabed" d="{d}"' in fig
+
+
+def test_pager_per_page_markers_carry_real_counts():
+    pages = _fixture_q1b_pages()
+    fig = _pager_fig(render(load_data(ROOT)))
+    assert f'data-pages="{len(pages)}"' in fig
+    cum = 0
+    for i, (k, nxt) in enumerate(pages, start=1):
+        cum += k
+        assert (f'data-page="{i}" data-nodes="{k}" data-cum="{cum}" '
+                f'data-has-next="{str(nxt).lower()}"') in fig, i
+
+
+def test_pager_caption_says_it_is_a_substitute_and_cites_source():
+    fig = _pager_fig(render(load_data(ROOT)))
+    assert "substitute" in fig.lower()
+    assert "Q1b" in fig and Q1B_TYPE in fig
+    assert "run 1" in fig and "2026-09-27" in fig
+    assert "fixtures/raw/2026-09-27_run1/" in fig
+
+
+def test_pager_axes_are_labelled():
+    fig = _pager_fig(render(load_data(ROOT)))
+    assert "page" in fig and "cumulative events" in fig
