@@ -1,10 +1,12 @@
 """Tests for the static site generator.
 
 Runs the generator against the REAL committed fixtures (network-free) and asserts
-that key values appear and that the page loads no external resource.
+that key values appear, that progressive enhancement holds, and that the page
+loads no external resource.
 """
 
 import pathlib
+import re
 
 from scripts.build_site import CNAME, load_data, render
 
@@ -34,9 +36,25 @@ def test_html_contains_both_run_time_ranges():
 
 
 def test_page_references_no_external_resource():
-    html = render(load_data(ROOT)).lower()
-    for bad in ("<script", "<img", "<link", "@import", "url(http", "fonts.googleapis", "srcset"):
-        assert bad not in html, f"external-resource marker present: {bad}"
+    """No resource that triggers a network fetch on load.
+
+    Inline <script> and inline <svg> are allowed (they make no request);
+    external scripts, stylesheets, fonts, images, and CSS url(http...) are not.
+    Anchor links to GitHub (<a href="https...">) are fine — they only fetch on
+    click, so they are not counted here.
+    """
+    html = render(load_data(ROOT))
+    low = html.lower()
+    for bad in (
+        "<script src", "<script type=\"text/javascript\" src",
+        "<img", "<link", "@import", "url(http", "url('http", 'url("http',
+        "fonts.googleapis", "fonts.gstatic", "srcset",
+        "<iframe", "<video", "<audio", "<object", "<embed", "@font-face",
+    ):
+        assert bad not in low, f"external-resource marker present: {bad}"
+    # every <script> is inline — no src attribute on any script tag
+    for tag in re.findall(r"<script[^>]*>", low):
+        assert "src" not in tag, f"script has src attribute: {tag}"
 
 
 def test_quotes_verbatim_32601_message():
@@ -53,3 +71,66 @@ def test_lists_all_four_providers():
 
 def test_cname_is_exact_domain():
     assert CNAME == "plimsmark.com"
+
+
+# ---------------- Item 12: design system + scroll framework ----------------
+
+def test_all_six_section_ids_and_hero_present():
+    html = render(load_data(ROOT))
+    for sid in ("hero", "sec-1", "sec-2", "sec-3", "sec-4", "sec-5", "sec-6"):
+        assert f'id="{sid}"' in html, f"missing section id: {sid}"
+
+
+def test_reduced_motion_media_query_present():
+    html = render(load_data(ROOT))
+    assert "prefers-reduced-motion" in html
+    # a reduce block must actually neutralise animation/transition
+    assert "animation" in html and "transition" in html
+
+
+def test_depth_gauge_links_to_every_section():
+    """The depth gauge nav is keyboard-reachable: real anchor links, one per section."""
+    html = render(load_data(ROOT))
+    assert 'class="gauge"' in html or "gauge" in html
+    for n in range(1, 7):
+        assert f'href="#sec-{n}"' in html, f"gauge missing link to sec-{n}"
+
+
+def test_reveal_is_hidden_only_under_js_class():
+    """Progressive enhancement: reveal-hiding CSS must be scoped to a JS-only
+    class on the root element, so content is fully visible when JS is off."""
+    html = render(load_data(ROOT))
+    # the hiding rule must be qualified by the js flag class, never global
+    assert re.search(r"\.js-anim[^{]*\.reveal\b[^{]*\{[^}]*opacity\s*:\s*0", html), (
+        "reveal elements must only be hidden under the .js-anim root class"
+    )
+    # a bare `.reveal{opacity:0}` (unqualified) would break the no-JS view
+    assert not re.search(r"(^|[},])\s*\.reveal\s*\{[^}]*opacity\s*:\s*0", html), (
+        "found an unqualified .reveal opacity:0 rule (breaks no-JS view)"
+    )
+
+
+def test_key_numbers_present_as_static_text_not_only_js():
+    """Counters animate toward values that are ALSO present as static text."""
+    html = render(load_data(ROOT))
+    # strip inline <script> blocks: the numbers must survive with JS removed
+    without_js = re.sub(r"<script\b[^>]*>.*?</script>", "", html, flags=re.DOTALL)
+    for token in ("32", "1416"):
+        assert token in without_js, f"{token} missing from no-JS static text"
+
+
+def test_counters_carry_their_target_as_visible_text():
+    """A count-up element shows its final value even before/without animation:
+    data-count target equals the element's own text content."""
+    html = render(load_data(ROOT))
+    for m in re.finditer(r'data-count="([0-9]+)"[^>]*>([^<]*)<', html):
+        target, shown = m.group(1), m.group(2).strip().replace(",", "")
+        assert shown == target, f"counter shows {shown!r} but targets {target!r}"
+
+
+def test_no_js_view_contains_all_section_headings():
+    """With every <script> removed, all six section headings remain."""
+    html = render(load_data(ROOT))
+    without_js = re.sub(r"<script\b[^>]*>.*?</script>", "", html, flags=re.DOTALL)
+    for heading in ("verdict", "Findings", "Method", "Limits", "Evidence", "Correction"):
+        assert heading in without_js, f"heading {heading!r} missing from no-JS view"
