@@ -19,8 +19,10 @@ from __future__ import annotations
 import gzip
 import html
 import json
+import math
 import pathlib
 import re
+import statistics
 
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -44,6 +46,23 @@ def _results(root, run):
             r = json.loads(line)
             if r.get("kind") == "result":
                 out.setdefault(r["query"], {})[(r["provider"], r["pass"])] = r
+    return out
+
+
+def _latencies(root, providers):
+    """Every recorded latency, per provider, across both runs.
+
+    Source: fixtures/premise_{DATE}_run1.jsonl.gz and _run2.jsonl.gz, field
+    `latency_ms` on every row with kind == "observation" (retried transient
+    errors included — each is a real request that took that long).
+    """
+    out = {p: [] for p in providers}
+    for run in ("run1", "run2"):
+        with gzip.open(root / "fixtures" / f"premise_{DATE}_{run}.jsonl.gz", "rt") as f:
+            for line in f:
+                r = json.loads(line)
+                if r.get("kind") == "observation" and r.get("latency_ms") is not None:
+                    out[r["provider"]].append(r["latency_ms"])
     return out
 
 
@@ -93,6 +112,7 @@ def load_data(root: pathlib.Path) -> dict:
         "q1b_count": q1b_count,
         "verdict": verdict,
         "msg_32601": msg_32601,
+        "latency": _latencies(root, list(cfg["providers"])),
         "ts": {
             "n": len(gt["rows"]),
             "lag_min": min(lags),
@@ -265,6 +285,30 @@ td code{overflow-wrap:normal; word-break:normal}
 .ships .shiplabel{fill:#eaf3f5; font-size:12px; font-family:inherit; font-weight:600}
 .ships .shippar{fill:#a9c2cc; font-size:10px; font-family:inherit; letter-spacing:.04em}
 .caption{color:var(--muted); font-size:.86rem; margin:.5em 0 0; text-align:center}
+
+/* ---- section 1: real latency chart (log ms, one row per provider) ---- */
+.latency{margin:1.4em 0 .6em; padding:14px 16px; background:var(--card);
+  border:1px solid var(--line); border-radius:10px}
+.lat-title{font-size:.92rem; color:#fff; margin:0 0 .5em; font-weight:600}
+.lat-row{margin:.55em 0}
+.lat-name{display:flex; flex-wrap:wrap; align-items:baseline; gap:.1em .6em; font-size:.84rem}
+.lat-name code{color:#fff}
+.lat-name small{color:var(--muted); font-variant-numeric:tabular-nums}
+.lat-strip{display:block; width:100%; height:22px; margin-top:.2em}
+.lat-strip .lat-grid{stroke:rgba(255,255,255,.13)}
+.lat-strip .lat-range{stroke:#a9c2cc}
+.lat-strip .lat-iqr{fill:rgba(99,216,206,.45); stroke:#63d8ce}
+.lat-strip .lat-med{stroke:#fff}
+.lat-axis{position:relative; height:1.3em; margin-top:.3em; font-size:.72rem;
+  color:var(--muted); font-variant-numeric:tabular-nums; border-top:1px solid var(--line)}
+.lat-axis span{position:absolute; top:.15em; transform:translateX(-50%); white-space:nowrap}
+.lat-axis span:first-child{transform:none}
+.lat-axis span:last-child{transform:translateX(-100%)}
+.lat-key{font-size:.74rem; color:var(--muted); margin:.5em 0 0}
+.lat-key i{display:inline-block; vertical-align:middle; margin:0 .3em 0 .6em}
+.lat-key .k-range{width:18px; height:2px; background:#a9c2cc}
+.lat-key .k-iqr{width:14px; height:10px; background:rgba(99,216,206,.45); border:1px solid #63d8ce}
+.lat-key .k-med{width:2px; height:12px; background:#fff}
 
 /* ---- depth gauge (fixed side rail on desktop, bottom bar on mobile) ---- */
 .gauge{position:fixed; z-index:20; left:14px; top:50%; transform:translateY(-50%)}
@@ -551,6 +595,71 @@ def _ships(cfg):
         '</svg>'
         '<figcaption class="caption">Four providers, one waterline: identical id sets, '
         'level trim. No ship rides lower than the others.</figcaption>'
+        '</figure>'
+    )
+
+
+LAT_W = 1000  # latency strip viewBox width; x is log10(ms) across whole decades
+
+
+def _fig_latency(lat):
+    """(S1) Real per-provider latency: min–max line, IQR box, median tick on a
+    log10 ms axis. Every coordinate is computed from `latency_ms` values read
+    in _latencies() (fixtures/premise_{DATE}_run1/run2.jsonl.gz, observation
+    rows). 125–273 requests per provider is too many to plot as dots legibly,
+    so each row is summarised by min / quartiles / max (inclusive method)."""
+    allv = [v for vs in lat.values() for v in vs]
+    lo = math.floor(math.log10(min(allv)))
+    hi = math.ceil(math.log10(max(allv)))
+
+    def x(v):
+        return f"{LAT_W * (math.log10(v) - lo) / (hi - lo):.1f}"
+
+    grid = "".join(
+        f'<line class="lat-grid" x1="{x(10 ** k)}" x2="{x(10 ** k)}" y1="0" y2="22" '
+        f'vector-effect="non-scaling-stroke"/>'
+        for k in range(lo, hi + 1)
+    )
+    rows = ""
+    for p, vals in lat.items():
+        q1, med, q3 = statistics.quantiles(vals, n=4, method="inclusive")
+        mn, mx = min(vals), max(vals)
+        stats = (f"n={len(vals)} · min {mn:,.1f} · median {med:,.1f} · "
+                 f"max {mx:,.1f} ms")
+        rows += (
+            f'<div class="lat-row" data-provider="{html.escape(p)}" data-n="{len(vals)}" '
+            f'data-min="{mn:.1f}" data-q1="{q1:.1f}" data-median="{med:.1f}" '
+            f'data-q3="{q3:.1f}" data-max="{mx:.1f}">'
+            f'<div class="lat-name"><code>{html.escape(p)}</code><small>{stats}</small></div>'
+            f'<svg class="lat-strip" viewBox="0 0 {LAT_W} 22" preserveAspectRatio="none" '
+            f'role="img" aria-label="{html.escape(p)} latency: {stats}">'
+            f'<title>{html.escape(p)}: {stats}; middle half {q1:,.1f}–{q3:,.1f} ms</title>'
+            f'{grid}'
+            f'<line class="lat-range" x1="{x(mn)}" x2="{x(mx)}" y1="11" y2="11" '
+            f'stroke-width="2" vector-effect="non-scaling-stroke"/>'
+            f'<rect class="lat-iqr" x="{x(q1)}" y="4" '
+            f'width="{float(x(q3)) - float(x(q1)):.1f}" height="14" '
+            f'vector-effect="non-scaling-stroke"/>'
+            f'<line class="lat-med" x1="{x(med)}" x2="{x(med)}" y1="1" y2="21" '
+            f'stroke-width="3" vector-effect="non-scaling-stroke"/>'
+            f'</svg></div>'
+        )
+    ticks = "".join(
+        f'<span style="left:{100 * (k - lo) / (hi - lo):.4g}%">{10 ** k:,} ms</span>'
+        for k in range(lo, hi + 1)
+    )
+    n_total = len(allv)
+    return (
+        '<figure class="latency">'
+        '<p class="lat-title">Request latency per provider (ms, log scale)</p>'
+        f'{rows}'
+        f'<div class="lat-axis" aria-hidden="true">{ticks}</div>'
+        '<p class="lat-key" aria-hidden="true"><i class="k-range"></i>min–max'
+        '<i class="k-iqr"></i>middle 50%<i class="k-med"></i>median</p>'
+        f'<figcaption class="caption">All {n_total} recorded <code>latency_ms</code> values '
+        f'from the observation rows of both runs (<code>premise_{DATE}_run1/run2.jsonl.gz</code>), '
+        'retried transient errors included. One vantage, one day — a snapshot, '
+        'not a provider benchmark.</figcaption>'
         '</figure>'
     )
 
@@ -851,6 +960,8 @@ def render(d: dict) -> str:
     self-consistency. Every JSON-RPC provider returned exactly
     {count(d['q1_count'])} events for the <code>0x2::coin</code> module query and
     {count(d['q1b_count'])} for the deny-list event type — identical id sets.</p>
+    <p>They agreed on the answers, not on speed. Every request's latency was recorded:</p>
+    {_fig_latency(d['latency'])}
     <div class="tablewrap"><table>
       <tr><th>Run</th><th>Start (UTC)</th><th>End (UTC)</th></tr>
       <tr><td>Run 1</td><td><code>{e(r1['started'])}</code></td><td><code>{e(r1['ended'])}</code></td></tr>

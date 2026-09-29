@@ -298,3 +298,91 @@ def test_section6_strike_animation_is_js_only():
     struck (line-through) and the correction already written."""
     html = render(load_data(ROOT))
     assert re.search(r"\.js-anim[^{]*\.struck", html), "strike animation must be JS-scoped"
+
+
+# ---------------- Item 17: real latency chart (section 1) ----------------
+# These tests re-parse the committed run files INDEPENDENTLY of build_site and
+# recompute every expected value, so a hardcoded chart cannot pass them.
+
+import gzip  # noqa: E402
+import json  # noqa: E402
+import math  # noqa: E402
+import statistics  # noqa: E402
+
+PROVIDERS = ("mysten_graphql", "publicnode", "blockvision", "rpcpool")
+
+
+def _fixture_latencies():
+    """Every latency_ms on every observation row of both committed runs."""
+    out = {p: [] for p in PROVIDERS}
+    for run in ("run1", "run2"):
+        path = ROOT / "fixtures" / f"premise_2026-09-27_{run}.jsonl.gz"
+        with gzip.open(path, "rt") as f:
+            for line in f:
+                r = json.loads(line)
+                if r.get("kind") == "observation" and r.get("latency_ms") is not None:
+                    out[r["provider"]].append(r["latency_ms"])
+    return out
+
+
+def _latency_fig(html):
+    m = re.search(r'<figure class="latency".*?</figure>', html, flags=re.DOTALL)
+    assert m, "no latency chart figure"
+    return m.group(0)
+
+
+def _lat_row(fig, provider):
+    m = re.search(rf'<div class="lat-row" data-provider="{provider}".*?</svg>', fig,
+                  flags=re.DOTALL)
+    assert m, f"no latency row for {provider}"
+    return m.group(0)
+
+
+def test_latency_chart_in_section1_has_one_row_per_provider():
+    sec1 = _section(render(load_data(ROOT)), "sec-1")
+    fig = _latency_fig(sec1)
+    rows = re.findall(r'class="lat-row" data-provider="([a-z_]+)"', fig)
+    assert sorted(rows) == sorted(PROVIDERS)
+
+
+def test_latency_row_stats_match_fixture_values():
+    fig = _latency_fig(render(load_data(ROOT)))
+    for p, vals in _fixture_latencies().items():
+        q1, med, q3 = statistics.quantiles(vals, n=4, method="inclusive")
+        row = _lat_row(fig, p)
+        assert f'data-n="{len(vals)}"' in row, p
+        assert f'data-min="{min(vals):.1f}"' in row, p
+        assert f'data-q1="{q1:.1f}"' in row, p
+        assert f'data-median="{med:.1f}"' in row, p
+        assert f'data-q3="{q3:.1f}"' in row, p
+        assert f'data-max="{max(vals):.1f}"' in row, p
+
+
+def test_latency_svg_coordinates_are_log_mapped_from_fixture():
+    """The median tick and range line x-coords are log10(ms) mapped onto a
+    0..1000 viewBox across whole decades spanning the fixture min..max."""
+    lat = _fixture_latencies()
+    allv = [v for vs in lat.values() for v in vs]
+    lo = math.floor(math.log10(min(allv)))
+    hi = math.ceil(math.log10(max(allv)))
+
+    def x(v):
+        return f"{1000 * (math.log10(v) - lo) / (hi - lo):.1f}"
+
+    fig = _latency_fig(render(load_data(ROOT)))
+    for p, vals in lat.items():
+        med = statistics.median(vals)
+        row = _lat_row(fig, p)
+        assert f'<line class="lat-med" x1="{x(med)}" x2="{x(med)}"' in row, p
+        assert f'<line class="lat-range" x1="{x(min(vals))}" x2="{x(max(vals))}"' in row, p
+
+
+def test_latency_axis_labelled_in_ms_with_decade_ticks():
+    lat = _fixture_latencies()
+    allv = [v for vs in lat.values() for v in vs]
+    lo = math.floor(math.log10(min(allv)))
+    hi = math.ceil(math.log10(max(allv)))
+    fig = _latency_fig(render(load_data(ROOT)))
+    assert "latency_ms" in fig or "latency (ms)" in fig
+    for k in range(lo, hi + 1):
+        assert f"{10 ** k:,} ms" in fig, f"missing axis tick {10 ** k:,} ms"
