@@ -48,14 +48,18 @@ h3{font-size:1.12rem; margin:1.6em 0 .35em; color:#fff}
 p{margin:.7em 0}
 .lede{font-size:1.12rem; color:var(--muted)}
 code,pre{background:var(--code-bg); border:1px solid var(--line); border-radius:6px}
-code{padding:.08em .35em; font-size:.88em}
+code{padding:.08em .35em; font-size:.88em; overflow-wrap:anywhere; word-break:break-word}
 pre{padding:12px 14px; overflow:auto; margin:.7em 0}
 pre code{border:0; padding:0; background:transparent}
 ul{padding-left:1.2em} li{margin:.3em 0}
 .kv{color:var(--muted); font-size:.92rem}
-table{border-collapse:collapse; width:100%; margin:.7em 0; font-size:.93rem}
+.tablewrap{overflow-x:auto; margin:.7em 0; border:1px solid var(--line); border-radius:8px;
+  -webkit-overflow-scrolling:touch}
+table{border-collapse:collapse; width:100%; font-size:.93rem}
+.tablewrap table{min-width:460px}
 th,td{border:1px solid var(--line); padding:6px 9px; text-align:left; vertical-align:top}
-th{background:rgba(255,255,255,.06); color:#fff}
+th{background:rgba(255,255,255,.06); color:#fff; white-space:nowrap}
+td code{overflow-wrap:normal; word-break:normal}
 .count{font-variant-numeric:tabular-nums}
 
 .verdict{display:inline-block; font-weight:800; letter-spacing:1px;
@@ -160,15 +164,15 @@ figure{margin:0}
 
 /* (d) timeline */
 .tl-track{position:relative; display:flex; align-items:flex-start;
-  justify-content:space-between; gap:.5rem; padding:.4em 0 .2em}
-.tl-mark{flex:0 0 auto; max-width:44%; text-align:center; font-size:.82rem}
+  justify-content:space-between; gap:.4rem; padding:.4em 0 .2em}
+.tl-mark{flex:0 0 auto; max-width:38%; text-align:center; font-size:.8rem}
 .tl-mark.b{text-align:right}
 .tl-dot{display:inline-block; width:14px; height:14px; border-radius:50%;
   background:var(--accent); box-shadow:0 0 0 4px rgba(99,216,206,.2)}
 .tl-dot.late{background:#ffb46e; box-shadow:0 0 0 4px rgba(255,180,110,.2)}
 .tl-lbl{display:block; margin-top:.3em} .tl-lbl small{color:var(--muted)}
-.tl-gap{flex:1 1 auto; text-align:center; align-self:center; color:#ffcf9e; font-size:.82rem;
-  min-width:90px}
+.tl-gap{flex:1 1 auto; text-align:center; align-self:center; color:#ffcf9e; font-size:.8rem;
+  min-width:64px}
 .tl-arrow{display:block; height:2px; margin:.5em 6px .3em; background:
   linear-gradient(90deg,var(--accent),#ffb46e); position:relative}
 .tl-arrow::after{content:"▸"; position:absolute; right:-2px; top:-9px; color:#ffb46e}
@@ -306,18 +310,18 @@ footer{max-width:760px; margin:0 auto; padding:2.5rem 20px 4rem; color:var(--mut
     self-consistency. Every JSON-RPC provider returned exactly
     <span class="count" data-count="32">32</span> events for the <code>0x2::coin</code> module query and
     <span class="count" data-count="1416">1416</span> for the deny-list event type — identical id sets.</p>
-    <table>
+    <div class="tablewrap"><table>
       <tr><th>Run</th><th>Start (UTC)</th><th>End (UTC)</th></tr>
       <tr><td>Run 1</td><td><code>2026-09-27T10:25:05.105605+00:00</code></td><td><code>2026-09-27T10:32:55.260404+00:00</code></td></tr>
       <tr><td>Run 2</td><td><code>2026-09-27T10:43:15.855962+00:00</code></td><td><code>2026-09-27T10:51:35.252748+00:00</code></td></tr>
-    </table>
+    </table></div>
     <p class="kv">Vantage <code>local-dev</code> · User-Agent <code>plimmark-sui-spike/0.1</code>
     · comparable predicate: MoveEventType (JSON-RPC) == type with fully-qualified type name (GraphQL).</p>
     <h3>Providers (pinned, no API keys)</h3>
-    <table>
+    <div class="tablewrap"><table>
       <tr><th>id</th><th>endpoint</th><th>paradigm</th></tr>
       <tr><td><code>mysten_graphql</code></td><td>https://graphql.mainnet.sui.io/graphql</td><td>graphql</td></tr><tr><td><code>publicnode</code></td><td>https://sui-rpc.publicnode.com</td><td>jsonrpc</td></tr><tr><td><code>blockvision</code></td><td>https://sui-mainnet-endpoint.blockvision.org</td><td>jsonrpc</td></tr><tr><td><code>rpcpool</code></td><td>https://mainnet.sui.rpcpool.com</td><td>jsonrpc</td></tr>
-    </table>
+    </table></div>
   </div>
 </section>
 
@@ -397,10 +401,10 @@ footer{max-width:760px; margin:0 auto; padding:2.5rem 20px 4rem; color:var(--mut
       <li><strong>Windows.</strong> Checkpoint ranges mapped to timestamps; boundary events
         excluded on all providers. Three 5-minute windows:</li>
     </ul>
-    <table>
+    <div class="tablewrap"><table>
       <tr><th>window</th><th>checkpoints</th><th>start (UTC)</th></tr>
       <tr><td>recent_1h</td><td>327,452,502–327,453,835</td><td>2026-09-27T08:58:10Z</td></tr><tr><td>d30</td><td>315,909,000–315,910,350</td><td>2026-08-28T09:58:10Z</td></tr><tr><td>oldest_available</td><td>273,221,834–273,223,147</td><td>2026-05-07T22:53:11Z</td></tr>
-    </table>
+    </table></div>
     <p class="kv">Q1b type <code>0x2::deny_list::PerTypeConfigCreated</code>. Q2 type
     <code>0x55300367a2d40813727ccac4ecee977a39fb9cdb46f2e6b2c354b9798f5de2c0::event::PriceFeedUpdateEvent</code>.</p>
   </div>

@@ -93,9 +93,23 @@ reference/      earlier spike's dated observations — RE-VERIFY, do not import
 ## Public report
 
 A static, self-contained report of the spike lives in `docs/` and is published at
-**https://plimsmark.com** via GitHub Pages. Every number and date on the page is
-read from the dated fixtures by `scripts/build_site.py` (tested network-free in
-`tests/test_build_site.py`), never typed by hand. Regenerate it with:
+**https://plimsmark.com** via GitHub Pages. It is a single HTML file — inline CSS,
+inline SVG, one small inline vanilla-JS block, and **no external fonts, scripts,
+images, or network requests** — rendered as a scrollytelling "descent": six
+sections shade from sea teal at the surface to abyssal navy in the deep, separated
+by animated wave dividers, with a fixed depth gauge (a side rail on desktop, a
+bottom bar on mobile) tracking scroll. The Plimsoll load-line mark is the logo.
+
+Every number, date, and claim is **read from the dated fixtures** by
+`scripts/build_site.py` (tested network-free in `tests/test_build_site.py`), never
+typed by hand; the decorative count-ups animate toward values already present as
+static text. The page is built as **progressive enhancement** — with JavaScript
+disabled, or with `prefers-reduced-motion: reduce`, every section, visual, and
+final number is fully visible and the animation is off. It is responsive down to
+375&nbsp;px, uses semantic headings and keyboard-reachable links, and stays well
+under 250&nbsp;KB (~43&nbsp;KB).
+
+Regenerate it with:
 
 ```bash
 .venv/bin/python scripts/build_site.py   # -> docs/index.html (+ CNAME, .nojekyll)
