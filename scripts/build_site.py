@@ -443,9 +443,9 @@ JS = """
   var root=document.documentElement;
   var mq=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)');
   var reduce=mq&&mq.matches;
-  // Progressive enhancement: without IO or with reduced motion, leave the fully
-  // rendered, final-number page exactly as served. Motion is additive only.
-  if(reduce||!('IntersectionObserver'in window)) return;
+  // Progressive enhancement: with reduced motion (or no JS at all) leave the
+  // fully rendered, final-number page exactly as served. Motion is additive.
+  if(reduce) return;
   root.classList.add('js-anim');
 
   function countup(el){
@@ -471,31 +471,49 @@ JS = """
     })();
   }
 
-  var io=new IntersectionObserver(function(es){
-    es.forEach(function(e){ if(!e.isIntersecting) return;
-      e.target.classList.add('shown');
-      if(e.target.matches('[data-count]')) countup(e.target);
-      var cs=e.target.querySelectorAll('[data-count]');
-      for(var i=0;i<cs.length;i++) countup(cs[i]);
-      var ty=e.target.querySelectorAll('.type');
-      for(var j=0;j<ty.length;j++) typeout(ty[j]);
-      io.unobserve(e.target);
-    });
-  },{threshold:0.18, rootMargin:'0px 0px -8% 0px'});
-  var rev=document.querySelectorAll('.reveal');
-  for(var i=0;i<rev.length;i++) io.observe(rev[i]);
+  function reveal(el){
+    if(el.dataset.shown) return; el.dataset.shown='1';
+    el.classList.add('shown');
+    if(el.matches('[data-count]')) countup(el);
+    var cs=el.querySelectorAll('[data-count]');
+    for(var i=0;i<cs.length;i++) countup(cs[i]);
+    var ty=el.querySelectorAll('.type');
+    for(var j=0;j<ty.length;j++) typeout(ty[j]);
+  }
 
-  // depth gauge active state
-  var links=[].slice.call(document.querySelectorAll('.gauge a'));
-  var secs=links.map(function(a){return document.querySelector(a.getAttribute('href'));});
-  var go=new IntersectionObserver(function(es){
-    es.forEach(function(e){ if(!e.isIntersecting) return;
-      var i=secs.indexOf(e.target);
-      links.forEach(function(l){l.classList.remove('on');l.removeAttribute('aria-current');});
-      if(i>=0){links[i].classList.add('on');links[i].setAttribute('aria-current','true');}
-    });
-  },{threshold:0.5});
-  secs.forEach(function(s){ if(s) go.observe(s); });
+  // Reveal + depth-gauge tracking are driven by an rAF-throttled scroll handler
+  // that reads each section's CURRENT top, not by IntersectionObserver. IO here
+  // was unreliable: a reveal keyed to a section top crossing a trigger band can
+  // be skipped entirely during a fast (momentum) flick — the section enters and
+  // exits the band between observer frames and never fires, leaving it stuck at
+  // opacity 0. Reading getBoundingClientRect() on scroll cannot be skipped: a
+  // section reveals once its top rises above 85% of the viewport, and any
+  // section already scrolled past (top <= 0) trivially satisfies that, so
+  // nothing is ever left hidden after you have scrolled by it. Area/height of
+  // the section is irrelevant, which is what the old thresholds got wrong.
+  var reveals=[].slice.call(document.querySelectorAll('.reveal'));
+  var dots=[].slice.call(document.querySelectorAll('.gauge a'));
+  var secs=dots.map(function(a){return document.querySelector(a.getAttribute('href'));});
+  var ticking=false;
+  function tick(){
+    ticking=false;
+    var vh=window.innerHeight;
+    for(var i=reveals.length-1;i>=0;i--){
+      if(reveals[i].getBoundingClientRect().top < vh*0.85){ reveal(reveals[i]); reveals.splice(i,1); }
+    }
+    var active=-1;
+    for(var k=0;k<secs.length;k++){
+      if(secs[k] && secs[k].getBoundingClientRect().top <= vh*0.5) active=k;
+    }
+    for(var m=0;m<dots.length;m++){
+      if(m===active){ dots[m].classList.add('on'); dots[m].setAttribute('aria-current','true'); }
+      else { dots[m].classList.remove('on'); dots[m].removeAttribute('aria-current'); }
+    }
+  }
+  function onScroll(){ if(ticking) return; ticking=true; requestAnimationFrame(tick); }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  window.addEventListener('resize', onScroll);
+  onScroll();
 })();
 """
 
