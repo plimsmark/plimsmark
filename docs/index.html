@@ -32,12 +32,23 @@ em{color:var(--accent)}
 /* ---- section shells: each a step down into the deep ---- */
 .depth{position:relative; padding:4.5rem 0 5rem}
 .depth>.inner{max-width:760px; margin:0 auto; padding:0 20px}
+.depth{scroll-margin-top:12px}
+.js-anim .depth.section-enter>.inner{animation:depth-enter .72s cubic-bezier(.2,.75,.25,1)}
+.depth[data-direction="up"]{--enter-offset:-28px}
+.js-anim .depth.section-enter::after{content:""; position:absolute; inset:0 0 auto;
+  height:180px; pointer-events:none;
+  background:linear-gradient(180deg,rgba(99,216,206,.16),transparent);
+  animation:depth-wash .85s ease-out both}
+@keyframes depth-enter{
+  from{opacity:.28; transform:translateY(var(--enter-offset,28px))}
+  to{opacity:1; transform:translateY(0)}}
+@keyframes depth-wash{from{opacity:.8; transform:translateY(-12px)} to{opacity:0; transform:translateY(22px)}}
 .d1{background:var(--sea1)} .d2{background:var(--sea2)} .d3{background:var(--sea3)}
 .d4{background:var(--sea4)} .d5{background:var(--sea5)} .d6{background:var(--sea6)}
 .wave{position:absolute; top:-1px; left:0; width:100%; height:64px; line-height:0; pointer-events:none}
 .wave svg{width:100%; height:100%; display:block}
-.wave .w1{animation:drift 14s linear infinite}
-.wave .w2{animation:drift 22s linear infinite reverse}
+.js-anim .wave .w1{animation:drift 14s linear infinite}
+.js-anim .wave .w2{animation:drift 22s linear infinite reverse}
 @keyframes drift{from{transform:translateX(0)} to{transform:translateX(-720px)}}
 
 h1{font-size:2.1rem; margin:.1em 0; letter-spacing:.3px}
@@ -76,10 +87,12 @@ td code{overflow-wrap:normal; word-break:normal}
 #hero .tag{color:rgba(255,255,255,.85); font-size:1.15rem; max-width:36ch; margin:.4em 0 0}
 .scrollcue{margin-top:1.6rem; color:rgba(255,255,255,.7); font-size:.85rem; letter-spacing:.12em;
   text-transform:uppercase}
-.scrollcue span{display:inline-block; animation:bob 2.4s ease-in-out infinite}
+.scrollcue span{display:inline-block}
+.js-anim .scrollcue span{animation:bob 2.4s ease-in-out infinite}
 @keyframes bob{0%,100%{transform:translateY(0)} 50%{transform:translateY(5px)}}
 #hero .buoy{position:absolute; z-index:1; right:15%; bottom:33%; width:64px; height:64px;
-  color:#fff; filter:drop-shadow(0 3px 6px rgba(0,0,0,.35)); animation:buoybob 3.6s ease-in-out infinite}
+  color:#fff; filter:drop-shadow(0 3px 6px rgba(0,0,0,.35))}
+.js-anim #hero .buoy{animation:buoybob 3.6s ease-in-out infinite}
 @keyframes buoybob{0%,100%{transform:translateY(0) rotate(-4deg)} 50%{transform:translateY(-9px) rotate(4deg)}}
 
 /* ---- section 1: fleet of agreement + ink stamp ---- */
@@ -95,7 +108,8 @@ td code{overflow-wrap:normal; word-break:normal}
 .ships-fig{margin:1.4em 0 .6em}
 .ships{width:100%; height:auto; display:block}
 .ships .waterline{stroke-dasharray:0}
-.ships .ship{animation:shipbob 4.6s ease-in-out infinite; transform-box:fill-box; transform-origin:center}
+.ships .ship{transform-box:fill-box; transform-origin:center}
+.js-anim .ships .ship{animation:shipbob 4.6s ease-in-out infinite}
 .ships .ship:nth-of-type(2){animation-delay:-.6s}
 .ships .ship:nth-of-type(3){animation-delay:-1.2s}
 .ships .ship:nth-of-type(4){animation-delay:-1.8s}
@@ -135,7 +149,7 @@ td code{overflow-wrap:normal; word-break:normal}
   width:2px; background:var(--line)}
 .gauge li{position:relative}
 .gauge a{display:flex; align-items:center; gap:.55rem; padding:.28rem 0;
-  color:var(--muted); text-decoration:none; font-size:.78rem}
+  min-height:44px; min-width:44px; color:var(--muted); text-decoration:none; font-size:.78rem}
 .gauge .dot{width:14px; height:14px; border-radius:50%; border:2px solid var(--line);
   background:transparent; flex:0 0 auto; position:relative; z-index:1; transition:all .3s}
 .gauge .lbl{opacity:0; transform:translateX(-4px); transition:opacity .25s, transform .25s;
@@ -157,15 +171,15 @@ figure{margin:0}
 .term-bar{display:flex; align-items:center; gap:6px; padding:8px 12px;
   background:rgba(255,255,255,.05); border-bottom:1px solid var(--line);
   font-size:.78rem; color:var(--muted)}
-.term-bar i{width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.22)}
 .term-bar span{margin-left:6px}
+.term-tag{margin-left:auto; color:var(--accent); font-weight:600; white-space:nowrap}
 .term-body{margin:0; padding:12px 14px; background:transparent; border:0; border-radius:0;
   font-size:.82rem; white-space:pre-wrap; word-break:break-word}
 .term-cmd{color:#8fe6dd} .term-err{color:#ffb4b4}
 .term-err b{color:#ff8f8f}
-.term-err .type::after{content:"▏"; color:#63d8ce}
-.term-err .type.typing::after{animation:blink 1s steps(1) infinite}
-@keyframes blink{50%{opacity:0}}
+.term-note{padding:12px 14px; border-top:1px solid var(--line); color:var(--muted);
+  font-size:.8rem; text-align:left}
+.term-note strong{color:var(--accent)}
 
 /* (b) diagram */
 .dg-row{display:flex; align-items:center; gap:.7rem; flex-wrap:wrap}
@@ -180,9 +194,17 @@ figure{margin:0}
 
 /* (c) sonar-style pagination step chart (real page sizes) */
 .sonar{text-align:center}
+.pg-title{display:flex; align-items:center; justify-content:space-between; gap:.6rem;
+  flex-wrap:wrap; margin:0 0 .7rem; font-size:.87rem; text-align:left}
+.pg-title>span{font-weight:650; color:var(--ink)}
+.pg-title small{color:var(--muted); font-weight:400}
+.pg-indicator{display:inline-block; width:7px; height:7px; margin-right:.5em;
+  border-radius:50%; background:var(--muted)}
+.sonar[data-playing="true"] .pg-indicator{background:var(--accent);
+  box-shadow:0 0 0 4px rgba(99,216,206,.13)}
 .sonar-scope{position:relative; display:block; max-width:480px; margin:0 auto;
   background:radial-gradient(ellipse at 50% 60%,rgba(99,216,206,.10),rgba(2,16,24,.55) 75%);
-  border:1px solid rgba(99,216,206,.28); border-radius:12px; padding:6px 4px 2px}
+  border:1px solid rgba(99,216,206,.28); border-radius:12px; padding:10px}
 .sonar-scope svg{width:100%; height:auto; display:block}
 .sonar .pg-grid{stroke:rgba(99,216,206,.16)}
 .sonar .pg-axis{stroke:rgba(255,255,255,.35)}
@@ -191,9 +213,31 @@ figure{margin:0}
 .sonar .seabed{fill:none; stroke:#63d8ce; stroke-width:2; filter:drop-shadow(0 0 3px rgba(99,216,206,.7))}
 .sonar .pg-dot{fill:#63d8ce}
 .sonar .pg-dot.end{fill:#fff; stroke:#63d8ce; stroke-width:2}
-.sonar .sweep{animation:sweepx 5s linear infinite}
-@keyframes sweepx{from{transform:translateX(0)} to{transform:translateX(290px)}}
-.sonar-read{display:block; margin-top:.3em; font-size:.8rem; color:var(--muted)}
+.sonar .pg-fill{fill:rgba(99,216,206,.07); stroke:none}
+.sonar .pg-head{fill:#fff; stroke:var(--accent); stroke-width:2;
+  filter:drop-shadow(0 0 5px rgba(99,216,206,.65))}
+.pg-readout{display:flex; flex-wrap:wrap; justify-content:space-between; gap:.4em 1em;
+  padding:.65rem .2rem; border-top:1px solid var(--line); font-size:.82rem;
+  color:var(--muted); font-variant-numeric:tabular-nums; text-align:left}
+.pg-readout strong{color:var(--accent)}
+.pg-readout code{font-size:.88em}
+.pg-controls:not([hidden]){display:flex; flex-wrap:wrap; align-items:center; gap:.45rem;
+  border-top:1px solid var(--line); padding-top:.65rem; text-align:left}
+.pg-controls button{min-height:44px; padding:.4rem .75rem; border:1px solid var(--line);
+  border-radius:6px; background:transparent; color:var(--ink); font:inherit;
+  font-size:.8rem; cursor:pointer}
+.pg-controls .pg-play{background:var(--accent); color:var(--accent-ink);
+  border-color:var(--accent); min-width:115px; font-weight:650}
+.pg-controls button:hover{filter:brightness(1.12)}
+.pg-controls button:disabled{opacity:.55; cursor:default}
+.pg-controls button:focus-visible,.pg-slider:focus-visible{
+  outline:2px solid var(--accent); outline-offset:3px}
+.pg-scrub{display:flex; align-items:center; gap:.5rem; flex:1 1 140px;
+  font-size:.78rem; color:var(--muted)}
+.pg-slider{width:100%; min-width:0; min-height:44px; accent-color:var(--accent); cursor:pointer}
+.pg-state{flex-basis:100%; color:var(--accent); font-size:.75rem; min-height:1.6em}
+.pg-note{font-size:.73rem; color:var(--muted); text-align:left; margin:.35rem 0 .55rem}
+.sonar-read{display:block; margin-top:.5em; font-size:.76rem; color:var(--muted)}
 
 /* (d) timeline */
 .tl-track{position:relative; display:flex; align-items:flex-start;
@@ -288,10 +332,14 @@ footer{max-width:760px; margin:0 auto; padding:2.5rem 20px 4rem; color:var(--mut
   body{font-size:16px}
   .gauge{left:0; right:0; top:auto; bottom:0; transform:none;
     background:rgba(4,29,46,.92); backdrop-filter:blur(6px); border-top:1px solid var(--line)}
-  .gauge ol{display:flex; justify-content:space-between; padding:.5rem .6rem}
+  .gauge ol{display:grid; grid-template-columns:repeat(6,minmax(0,1fr));
+    padding:.4rem .2rem max(.4rem,env(safe-area-inset-bottom))}
+  .gauge li{margin:0; min-width:0}
   .gauge ol::before{display:none}
-  .gauge a{flex-direction:column; gap:.2rem; padding:.15rem .3rem; font-size:.62rem; text-align:center}
+  .gauge a{flex-direction:column; justify-content:center; gap:.2rem; padding:.2rem .1rem;
+    font-size:.62rem; text-align:center}
   .gauge .lbl{opacity:1; transform:none}
+  .gauge .section-number{display:none}
   .depth{padding:3.2rem 0 4rem}
   h1{font-size:1.7rem} h2{font-size:1.3rem}
   footer{padding-bottom:5.5rem}
@@ -306,12 +354,12 @@ footer{max-width:760px; margin:0 auto; padding:2.5rem 20px 4rem; color:var(--mut
   .js-anim .reveal .struck{text-decoration:line-through !important}
   .js-anim .reveal .struck::after{width:0 !important}
   .js-anim .reveal .corrected{opacity:1 !important; transform:none !important}
-  .sonar .sweep{display:none}
+  .depth.section-enter::after{display:none}
 }
 </style>
 </head>
 <body>
-<nav class="gauge" aria-label="Depth gauge — jump to a section"><ol><li><a href="#sec-1"><span class="dot"></span><span class="lbl">1 · Verdict</span></a></li><li><a href="#sec-2"><span class="dot"></span><span class="lbl">2 · Findings</span></a></li><li><a href="#sec-3"><span class="dot"></span><span class="lbl">3 · Method</span></a></li><li><a href="#sec-4"><span class="dot"></span><span class="lbl">4 · Limits</span></a></li><li><a href="#sec-5"><span class="dot"></span><span class="lbl">5 · Evidence</span></a></li><li><a href="#sec-6"><span class="dot"></span><span class="lbl">6 · Correction</span></a></li></ol></nav>
+<nav class="gauge" aria-label="Depth gauge — jump to a section"><ol><li><a href="#sec-1" aria-label="Section 1: Verdict"><span class="dot"></span><span class="lbl"><span class="section-number">1 · </span>Verdict</span></a></li><li><a href="#sec-2" aria-label="Section 2: Findings"><span class="dot"></span><span class="lbl"><span class="section-number">2 · </span>Findings</span></a></li><li><a href="#sec-3" aria-label="Section 3: Method"><span class="dot"></span><span class="lbl"><span class="section-number">3 · </span>Method</span></a></li><li><a href="#sec-4" aria-label="Section 4: Limits"><span class="dot"></span><span class="lbl"><span class="section-number">4 · </span>Limits</span></a></li><li><a href="#sec-5" aria-label="Section 5: Evidence"><span class="dot"></span><span class="lbl"><span class="section-number">5 · </span>Evidence</span></a></li><li><a href="#sec-6" aria-label="Section 6: Correction"><span class="dot"></span><span class="lbl"><span class="section-number">6 · </span>Correction</span></a></li></ol></nav>
 <main>
 
 <section id="hero">
@@ -367,10 +415,13 @@ footer{max-width:760px; margin:0 auto; padding:2.5rem 20px 4rem; color:var(--mut
     <h2><span class="n">2</span> Findings Sui developers can use today</h2>
 
     <h3>Mysten's public fullnode JSON-RPC is deprecated</h3>
-    <p>A JSON-RPC call to <code>fullnode.mainnet.sui.io</code> returns error
+    <p>In the recorded check on <time datetime="2026-09-27T11:31:22.231205+00:00">2026-09-27</time>,
+    a JSON-RPC call to <code>fullnode.mainnet.sui.io</code> returned error
     <code>-32601</code> (verbatim):</p>
-    <figure class="terminal" aria-label="Terminal: a JSON-RPC call to the public fullnode returns error -32601, method not found."><div class="term-bar"><i></i><i></i><i></i><span>fullnode.mainnet.sui.io · JSON-RPC</span></div><pre class="term-body"><span class="term-cmd">$ POST / suix_queryEvents { MoveModule: 0x2::coin }</span>
-<span class="term-err">✕ error <b>-32601</b>: <span class="type">Method not found. JSON-RPC on public fullnodes has been deprecated. Please migrate to gRPC or GraphQL endpoints. See https://docs.sui.io/develop/accessing-data/json-rpc-migration for more information.</span></span></pre></figure>
+    <figure class="terminal" aria-label="Archived JSON-RPC evidence: the public fullnode returned error -32601, method not found."><div class="term-bar"><span>Legacy JSON-RPC</span><b class="term-tag">Recorded response</b></div><pre class="term-body"><span class="term-cmd">POST https://fullnode.mainnet.sui.io</span>
+<code class="term-request">{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;sui_getLatestCheckpointSequenceNumber&quot;,&quot;params&quot;:[]}</code>
+
+<span class="term-err">✕ error <b>-32601</b>: Method not found. JSON-RPC on public fullnodes has been deprecated. Please migrate to gRPC or GraphQL endpoints. See https://docs.sui.io/develop/accessing-data/json-rpc-migration for more information.</span></pre><figcaption class="term-note"><strong>Archived evidence</strong> · <time datetime="2026-09-27T11:31:22.231205+00:00">2026-09-27</time> — not a live request or a website error. The endpoint rejected legacy JSON-RPC; the spike uses GraphQL. <a href="https://github.com/plimsmark/plimsmark/blob/main/fixtures/mysten_fullnode_jsonrpc_2026-09-27.md">View recorded source</a>.</figcaption></figure>
     <p>Use GraphQL or gRPC. The three third-party JSON-RPC providers below still serve
     the legacy JSON-RPC surface.</p>
 
@@ -394,7 +445,7 @@ footer{max-width:760px; margin:0 auto; padding:2.5rem 20px 4rem; color:var(--mut
     The client code in this spike is built to handle this behaviour; no such page occurred in
     the recorded runs. Keep paginating while the cursor advances;
     treat a stalled cursor (no advance) as an incomplete, unknown result — never as an empty set.</p>
-    <figure class="sonar" data-pages="29" aria-label="Step chart of a real GraphQL events scan: 29 pages, cumulative events rising to 1,416; no page was empty."><div class="sonar-scope"><svg viewBox="0 0 340 220" role="img" aria-label="Cumulative events by page"><defs><linearGradient id="sg" x1="0" x2="1"><stop offset="0" stop-color="#63d8ce" stop-opacity="0"/><stop offset="1" stop-color="#63d8ce" stop-opacity=".28"/></linearGradient></defs><line class="pg-grid" x1="52.0" x2="326.0" y1="174.0" y2="174.0"/><text class="pg-tick" x="47.0" y="177.5" text-anchor="end">0</text><line class="pg-grid" x1="52.0" x2="326.0" y1="120.3" y2="120.3"/><text class="pg-tick" x="47.0" y="123.8" text-anchor="end">500</text><line class="pg-grid" x1="52.0" x2="326.0" y1="66.7" y2="66.7"/><text class="pg-tick" x="47.0" y="70.2" text-anchor="end">1,000</text><line class="pg-grid" x1="52.0" x2="326.0" y1="22.0" y2="22.0"/><text class="pg-tick" x="47.0" y="25.5" text-anchor="end">1,416</text><line class="pg-axis" x1="52.0" x2="326.0" y1="174.0" y2="174.0"/><rect class="sweep" x="16.0" y="22.0" width="36" height="152.0" fill="url(#sg)" aria-hidden="true"/><path class="seabed" d="M52.0,174.0 V168.6 H61.4 V163.3 H70.9 V157.9 H80.3 V152.5 H89.8 V147.2 H99.2 V141.8 H108.7 V136.4 H118.1 V131.1 H127.6 V125.7 H137.0 V120.3 H146.5 V115.0 H155.9 V109.6 H165.4 V104.2 H174.8 V98.9 H184.3 V93.5 H193.7 V88.1 H203.2 V82.8 H212.6 V77.4 H222.1 V72.0 H231.5 V66.7 H241.0 V61.3 H250.4 V55.9 H259.9 V50.6 H269.3 V45.2 H278.8 V39.8 H288.2 V34.5 H297.7 V29.1 H307.1 V23.7 H316.6 V22.0 H326.0"/><circle class="pg-dot" cx="61.4" cy="168.6" r="2.2" data-page="1" data-nodes="50" data-cum="50" data-has-next="true"><title>page 1: 50 nodes, 50 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="70.9" cy="163.3" r="2.2" data-page="2" data-nodes="50" data-cum="100" data-has-next="true"><title>page 2: 50 nodes, 100 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="80.3" cy="157.9" r="2.2" data-page="3" data-nodes="50" data-cum="150" data-has-next="true"><title>page 3: 50 nodes, 150 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="89.8" cy="152.5" r="2.2" data-page="4" data-nodes="50" data-cum="200" data-has-next="true"><title>page 4: 50 nodes, 200 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="99.2" cy="147.2" r="2.2" data-page="5" data-nodes="50" data-cum="250" data-has-next="true"><title>page 5: 50 nodes, 250 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="108.7" cy="141.8" r="2.2" data-page="6" data-nodes="50" data-cum="300" data-has-next="true"><title>page 6: 50 nodes, 300 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="118.1" cy="136.4" r="2.2" data-page="7" data-nodes="50" data-cum="350" data-has-next="true"><title>page 7: 50 nodes, 350 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="127.6" cy="131.1" r="2.2" data-page="8" data-nodes="50" data-cum="400" data-has-next="true"><title>page 8: 50 nodes, 400 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="137.0" cy="125.7" r="2.2" data-page="9" data-nodes="50" data-cum="450" data-has-next="true"><title>page 9: 50 nodes, 450 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="146.5" cy="120.3" r="2.2" data-page="10" data-nodes="50" data-cum="500" data-has-next="true"><title>page 10: 50 nodes, 500 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="155.9" cy="115.0" r="2.2" data-page="11" data-nodes="50" data-cum="550" data-has-next="true"><title>page 11: 50 nodes, 550 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="165.4" cy="109.6" r="2.2" data-page="12" data-nodes="50" data-cum="600" data-has-next="true"><title>page 12: 50 nodes, 600 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="174.8" cy="104.2" r="2.2" data-page="13" data-nodes="50" data-cum="650" data-has-next="true"><title>page 13: 50 nodes, 650 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="184.3" cy="98.9" r="2.2" data-page="14" data-nodes="50" data-cum="700" data-has-next="true"><title>page 14: 50 nodes, 700 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="193.7" cy="93.5" r="2.2" data-page="15" data-nodes="50" data-cum="750" data-has-next="true"><title>page 15: 50 nodes, 750 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="203.2" cy="88.1" r="2.2" data-page="16" data-nodes="50" data-cum="800" data-has-next="true"><title>page 16: 50 nodes, 800 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="212.6" cy="82.8" r="2.2" data-page="17" data-nodes="50" data-cum="850" data-has-next="true"><title>page 17: 50 nodes, 850 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="222.1" cy="77.4" r="2.2" data-page="18" data-nodes="50" data-cum="900" data-has-next="true"><title>page 18: 50 nodes, 900 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="231.5" cy="72.0" r="2.2" data-page="19" data-nodes="50" data-cum="950" data-has-next="true"><title>page 19: 50 nodes, 950 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="241.0" cy="66.7" r="2.2" data-page="20" data-nodes="50" data-cum="1000" data-has-next="true"><title>page 20: 50 nodes, 1000 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="250.4" cy="61.3" r="2.2" data-page="21" data-nodes="50" data-cum="1050" data-has-next="true"><title>page 21: 50 nodes, 1050 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="259.9" cy="55.9" r="2.2" data-page="22" data-nodes="50" data-cum="1100" data-has-next="true"><title>page 22: 50 nodes, 1100 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="269.3" cy="50.6" r="2.2" data-page="23" data-nodes="50" data-cum="1150" data-has-next="true"><title>page 23: 50 nodes, 1150 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="278.8" cy="45.2" r="2.2" data-page="24" data-nodes="50" data-cum="1200" data-has-next="true"><title>page 24: 50 nodes, 1200 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="288.2" cy="39.8" r="2.2" data-page="25" data-nodes="50" data-cum="1250" data-has-next="true"><title>page 25: 50 nodes, 1250 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="297.7" cy="34.5" r="2.2" data-page="26" data-nodes="50" data-cum="1300" data-has-next="true"><title>page 26: 50 nodes, 1300 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="307.1" cy="29.1" r="2.2" data-page="27" data-nodes="50" data-cum="1350" data-has-next="true"><title>page 27: 50 nodes, 1350 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="316.6" cy="23.7" r="2.2" data-page="28" data-nodes="50" data-cum="1400" data-has-next="true"><title>page 28: 50 nodes, 1400 cumulative, hasNextPage true</title></circle><circle class="pg-dot end" cx="326.0" cy="22.0" r="3.5" data-page="29" data-nodes="16" data-cum="1416" data-has-next="false"><title>page 29: 16 nodes, 1416 cumulative, hasNextPage false</title></circle><text class="pg-tick" x="56.7" y="189.0" text-anchor="middle">1</text><text class="pg-tick" x="141.8" y="189.0" text-anchor="middle">10</text><text class="pg-tick" x="236.3" y="189.0" text-anchor="middle">20</text><text class="pg-tick" x="321.3" y="189.0" text-anchor="middle">29</text><text class="pg-lbl" x="189.0" y="210.0" text-anchor="middle">page (first: 50)</text><text class="pg-lbl" x="11" y="98.0" text-anchor="middle" transform="rotate(-90 11 98.0)">cumulative events</text></svg><span class="sonar-read">29 pages · 28×50 + 16 = 1,416 events · <code>hasNextPage: false</code> only on page 29</span></div><figcaption class="caption"><strong>Substitute, not the trap itself:</strong> this spike never recorded a page with 0 nodes + <code>hasNextPage: true</code> — none of its committed GraphQL responses has one. Drawn instead: the real Q1b full-history scan (GraphQL <code>events</code>, type <code>0x2::deny_list::PerTypeConfigCreated</code>, <code>mysten_graphql</code>, run 1, 2026-09-27), one step per page from <code>fixtures/raw/2026-09-27_run1/</code> 00176–00204 — every page advanced the cursor. The rule for the trap still holds: 0 nodes + <code>hasNextPage: true</code> = not empty; keep paginating while the cursor advances, and treat a stalled cursor as unknown, never zero.</figcaption></figure>
+    <figure class="sonar" data-pages="29" data-start-x="52.0" data-start-y="174.0" aria-label="Step chart of a real GraphQL events scan: 29 pages, cumulative events rising to 1,416; no page was empty."><p class="pg-title"><span><i class="pg-indicator" aria-hidden="true"></i>Recorded replay</span><small>not live · 2026-09-27</small></p><div class="sonar-scope"><svg id="q1b-chart" viewBox="0 0 340 220" role="img" aria-label="Cumulative events by page"><line class="pg-grid" x1="52.0" x2="326.0" y1="174.0" y2="174.0"/><text class="pg-tick" x="47.0" y="177.5" text-anchor="end">0</text><line class="pg-grid" x1="52.0" x2="326.0" y1="120.3" y2="120.3"/><text class="pg-tick" x="47.0" y="123.8" text-anchor="end">500</text><line class="pg-grid" x1="52.0" x2="326.0" y1="66.7" y2="66.7"/><text class="pg-tick" x="47.0" y="70.2" text-anchor="end">1,000</text><line class="pg-grid" x1="52.0" x2="326.0" y1="22.0" y2="22.0"/><text class="pg-tick" x="47.0" y="25.5" text-anchor="end">1,416</text><line class="pg-axis" x1="52.0" x2="326.0" y1="174.0" y2="174.0"/><path class="pg-fill" d="M52.0,174.0 V168.6 H61.4 V163.3 H70.9 V157.9 H80.3 V152.5 H89.8 V147.2 H99.2 V141.8 H108.7 V136.4 H118.1 V131.1 H127.6 V125.7 H137.0 V120.3 H146.5 V115.0 H155.9 V109.6 H165.4 V104.2 H174.8 V98.9 H184.3 V93.5 H193.7 V88.1 H203.2 V82.8 H212.6 V77.4 H222.1 V72.0 H231.5 V66.7 H241.0 V61.3 H250.4 V55.9 H259.9 V50.6 H269.3 V45.2 H278.8 V39.8 H288.2 V34.5 H297.7 V29.1 H307.1 V23.7 H316.6 V22.0 H326.0 V174.0 H52.0 Z" aria-hidden="true"/><path class="seabed" d="M52.0,174.0 V168.6 H61.4 V163.3 H70.9 V157.9 H80.3 V152.5 H89.8 V147.2 H99.2 V141.8 H108.7 V136.4 H118.1 V131.1 H127.6 V125.7 H137.0 V120.3 H146.5 V115.0 H155.9 V109.6 H165.4 V104.2 H174.8 V98.9 H184.3 V93.5 H193.7 V88.1 H203.2 V82.8 H212.6 V77.4 H222.1 V72.0 H231.5 V66.7 H241.0 V61.3 H250.4 V55.9 H259.9 V50.6 H269.3 V45.2 H278.8 V39.8 H288.2 V34.5 H297.7 V29.1 H307.1 V23.7 H316.6 V22.0 H326.0"/><circle class="pg-dot" cx="61.4" cy="168.6" r="2.2" data-page="1" data-nodes="50" data-cum="50" data-has-next="true"><title>page 1: 50 nodes, 50 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="70.9" cy="163.3" r="2.2" data-page="2" data-nodes="50" data-cum="100" data-has-next="true"><title>page 2: 50 nodes, 100 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="80.3" cy="157.9" r="2.2" data-page="3" data-nodes="50" data-cum="150" data-has-next="true"><title>page 3: 50 nodes, 150 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="89.8" cy="152.5" r="2.2" data-page="4" data-nodes="50" data-cum="200" data-has-next="true"><title>page 4: 50 nodes, 200 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="99.2" cy="147.2" r="2.2" data-page="5" data-nodes="50" data-cum="250" data-has-next="true"><title>page 5: 50 nodes, 250 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="108.7" cy="141.8" r="2.2" data-page="6" data-nodes="50" data-cum="300" data-has-next="true"><title>page 6: 50 nodes, 300 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="118.1" cy="136.4" r="2.2" data-page="7" data-nodes="50" data-cum="350" data-has-next="true"><title>page 7: 50 nodes, 350 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="127.6" cy="131.1" r="2.2" data-page="8" data-nodes="50" data-cum="400" data-has-next="true"><title>page 8: 50 nodes, 400 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="137.0" cy="125.7" r="2.2" data-page="9" data-nodes="50" data-cum="450" data-has-next="true"><title>page 9: 50 nodes, 450 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="146.5" cy="120.3" r="2.2" data-page="10" data-nodes="50" data-cum="500" data-has-next="true"><title>page 10: 50 nodes, 500 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="155.9" cy="115.0" r="2.2" data-page="11" data-nodes="50" data-cum="550" data-has-next="true"><title>page 11: 50 nodes, 550 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="165.4" cy="109.6" r="2.2" data-page="12" data-nodes="50" data-cum="600" data-has-next="true"><title>page 12: 50 nodes, 600 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="174.8" cy="104.2" r="2.2" data-page="13" data-nodes="50" data-cum="650" data-has-next="true"><title>page 13: 50 nodes, 650 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="184.3" cy="98.9" r="2.2" data-page="14" data-nodes="50" data-cum="700" data-has-next="true"><title>page 14: 50 nodes, 700 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="193.7" cy="93.5" r="2.2" data-page="15" data-nodes="50" data-cum="750" data-has-next="true"><title>page 15: 50 nodes, 750 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="203.2" cy="88.1" r="2.2" data-page="16" data-nodes="50" data-cum="800" data-has-next="true"><title>page 16: 50 nodes, 800 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="212.6" cy="82.8" r="2.2" data-page="17" data-nodes="50" data-cum="850" data-has-next="true"><title>page 17: 50 nodes, 850 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="222.1" cy="77.4" r="2.2" data-page="18" data-nodes="50" data-cum="900" data-has-next="true"><title>page 18: 50 nodes, 900 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="231.5" cy="72.0" r="2.2" data-page="19" data-nodes="50" data-cum="950" data-has-next="true"><title>page 19: 50 nodes, 950 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="241.0" cy="66.7" r="2.2" data-page="20" data-nodes="50" data-cum="1000" data-has-next="true"><title>page 20: 50 nodes, 1000 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="250.4" cy="61.3" r="2.2" data-page="21" data-nodes="50" data-cum="1050" data-has-next="true"><title>page 21: 50 nodes, 1050 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="259.9" cy="55.9" r="2.2" data-page="22" data-nodes="50" data-cum="1100" data-has-next="true"><title>page 22: 50 nodes, 1100 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="269.3" cy="50.6" r="2.2" data-page="23" data-nodes="50" data-cum="1150" data-has-next="true"><title>page 23: 50 nodes, 1150 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="278.8" cy="45.2" r="2.2" data-page="24" data-nodes="50" data-cum="1200" data-has-next="true"><title>page 24: 50 nodes, 1200 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="288.2" cy="39.8" r="2.2" data-page="25" data-nodes="50" data-cum="1250" data-has-next="true"><title>page 25: 50 nodes, 1250 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="297.7" cy="34.5" r="2.2" data-page="26" data-nodes="50" data-cum="1300" data-has-next="true"><title>page 26: 50 nodes, 1300 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="307.1" cy="29.1" r="2.2" data-page="27" data-nodes="50" data-cum="1350" data-has-next="true"><title>page 27: 50 nodes, 1350 cumulative, hasNextPage true</title></circle><circle class="pg-dot" cx="316.6" cy="23.7" r="2.2" data-page="28" data-nodes="50" data-cum="1400" data-has-next="true"><title>page 28: 50 nodes, 1400 cumulative, hasNextPage true</title></circle><circle class="pg-dot end" cx="326.0" cy="22.0" r="3.5" data-page="29" data-nodes="16" data-cum="1416" data-has-next="false"><title>page 29: 16 nodes, 1416 cumulative, hasNextPage false</title></circle><text class="pg-tick" x="56.7" y="189.0" text-anchor="middle">1</text><text class="pg-tick" x="141.8" y="189.0" text-anchor="middle">10</text><text class="pg-tick" x="236.3" y="189.0" text-anchor="middle">20</text><text class="pg-tick" x="321.3" y="189.0" text-anchor="middle">29</text><circle class="pg-head" cx="326.0" cy="22.0" r="4.2" aria-hidden="true"/><text class="pg-lbl" x="189.0" y="210.0" text-anchor="middle">page (first: 50)</text><text class="pg-lbl" x="11" y="98.0" text-anchor="middle" transform="rotate(-90 11 98.0)">cumulative events</text></svg><div class="pg-readout" aria-live="off"><span>Page <strong><span class="pg-page">29</span></strong> / 29</span><span><strong><span class="pg-total">1,416</span></strong> events</span><span>+<span class="pg-nodes">16</span> this page</span><code>hasNextPage: <span class="pg-next">false</span></code></div><div class="pg-controls" hidden><button class="pg-play" type="button" aria-controls="q1b-chart" aria-pressed="false">Play replay</button><button class="pg-restart" type="button" aria-controls="q1b-chart">Restart</button><label class="pg-scrub" for="q1b-page">Page <input class="pg-slider" id="q1b-page" type="range" min="1" max="29" value="29" step="1" aria-controls="q1b-chart" aria-describedby="q1b-replay-note"></label><span class="pg-state" role="status" aria-live="polite">Recorded scan complete</span></div><p class="pg-note" id="q1b-replay-note">Replay of saved responses, not live data. Playback timing is illustrative, not recorded request timing.</p><span class="sonar-read">29 pages · 28×50 + 16 = 1,416 events · <code>hasNextPage: false</code> only on page 29</span></div><figcaption class="caption"><strong>Substitute, not the trap itself:</strong> this spike never recorded a page with 0 nodes + <code>hasNextPage: true</code> — none of its committed GraphQL responses has one. Drawn instead: the real Q1b full-history scan (GraphQL <code>events</code>, type <code>0x2::deny_list::PerTypeConfigCreated</code>, <code>mysten_graphql</code>, run 1, 2026-09-27), one step per page from <code>fixtures/raw/2026-09-27_run1/</code> 00176–00204 — every page advanced the cursor. The rule for the trap still holds: 0 nodes + <code>hasNextPage: true</code> = not empty; keep paginating while the cursor advances, and treat a stalled cursor as unknown, never zero.</figcaption></figure>
 
     <h3>Legacy JSON-RPC event timestamps run a fraction of a second late</h3>
     <p>Across <strong>8</strong> checked transactions, all providers agreed on
@@ -488,17 +539,18 @@ footer{max-width:760px; margin:0 auto; padding:2.5rem 20px 4rem; color:var(--mut
   var root=document.documentElement;
   var mq=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)');
   var reduce=mq&&mq.matches;
-  // Progressive enhancement: with reduced motion (or no JS at all) leave the
-  // fully rendered, final-number page exactly as served. Motion is additive.
-  if(reduce) return;
-  root.classList.add('js-anim');
+  // Navigation still works under reduced motion; only animation is disabled.
+  // With no JS, the complete page and final values remain visible as served.
+  root.classList.toggle('js-anim',!reduce);
 
   function countup(el){
     if(el.dataset.done) return; el.dataset.done='1';
     var to=parseFloat(el.getAttribute('data-count'));
     var dec=parseInt(el.getAttribute('data-dec')||'0',10);
+    if(reduce){el.textContent=to.toFixed(dec);return;}
     var t0=null, dur=900;
     function frame(t){ if(t0===null)t0=t;
+      if(reduce){el.textContent=to.toFixed(dec);return;}
       var p=Math.min((t-t0)/dur,1); var v=to*(1-Math.pow(1-p,3));
       el.textContent=v.toFixed(dec);
       if(p<1) requestAnimationFrame(frame); else el.textContent=to.toFixed(dec);
@@ -506,15 +558,93 @@ footer{max-width:760px; margin:0 auto; padding:2.5rem 20px 4rem; color:var(--mut
     requestAnimationFrame(frame);
   }
 
-  function typeout(el){
-    if(el.dataset.typed) return; el.dataset.typed='1';
-    var full=el.textContent, i=0; el.textContent='';
-    el.classList.add('typing');
-    (function tick(){ el.textContent=full.slice(0,i++);
-      if(i<=full.length) setTimeout(tick,12);
-      else el.classList.remove('typing');
-    })();
+  // Replay the saved observations, never poll RPCs or invent changing values.
+  function setupReplay(fig){
+    var points=[].slice.call(fig.querySelectorAll('.pg-dot'));
+    var controls=fig.querySelector('.pg-controls');
+    var scope=fig.querySelector('.sonar-scope'), svg=scope.querySelector('svg');
+    var path=fig.querySelector('.seabed'), fill=fig.querySelector('.pg-fill');
+    var head=fig.querySelector('.pg-head'), slider=fig.querySelector('.pg-slider');
+    var playButton=fig.querySelector('.pg-play'), restart=fig.querySelector('.pg-restart');
+    var status=fig.querySelector('.pg-state');
+    var pageLabel=fig.querySelector('.pg-page'), totalLabel=fig.querySelector('.pg-total');
+    var nodesLabel=fig.querySelector('.pg-nodes'), nextLabel=fig.querySelector('.pg-next');
+    var origin='M'+fig.dataset.startX+','+fig.dataset.startY;
+    var paths=[], trace=origin;
+    points.forEach(function(dot){
+      trace+=' V'+dot.getAttribute('cy')+' H'+dot.getAttribute('cx'); paths.push(trace);
+    });
+    var current=points.length, timer=null, playing=false, started=false, resume=false;
+
+    function buttons(){
+      fig.dataset.playing=String(playing);
+      playButton.setAttribute('aria-pressed',String(playing));
+      playButton.textContent=playing?'Pause replay':'Play replay';
+    }
+    function draw(index){
+      current=Math.max(1,Math.min(points.length,index));
+      var dot=points[current-1], data=dot.dataset;
+      var x=dot.getAttribute('cx'), y=dot.getAttribute('cy');
+      path.setAttribute('d',paths[current-1]);
+      fill.setAttribute('d',paths[current-1]+' V'+fig.dataset.startY+' H'+fig.dataset.startX+' Z');
+      head.setAttribute('cx',x); head.setAttribute('cy',y);
+      points.forEach(function(p,i){p.style.visibility=i<current?'visible':'hidden';});
+      pageLabel.textContent=String(current);
+      totalLabel.textContent=Number(data.cum).toLocaleString('en-US');
+      nodesLabel.textContent=data.nodes; nextLabel.textContent=data.hasNext;
+      slider.value=String(current);
+      var description='Recorded page '+current+' of '+points.length+': '+data.nodes+
+        ' nodes, '+data.cum+' cumulative events; hasNextPage '+data.hasNext;
+      slider.setAttribute('aria-valuetext',description);
+      svg.setAttribute('aria-label',description);
+    }
+    function visible(){
+      var r=scope.getBoundingClientRect();
+      return !document.hidden && r.top<window.innerHeight*.85 && r.bottom>window.innerHeight*.12;
+    }
+    function pause(message,autoResume){
+      clearTimeout(timer); timer=null; playing=false; resume=!!autoResume;
+      status.textContent=message; buttons();
+    }
+    function advance(){
+      if(!visible()){pause('Paused while the chart is out of view',true);return;}
+      draw(current+1);
+      if(current===points.length){pause('Recorded scan complete',false);return;}
+      timer=setTimeout(advance,300);
+    }
+    function play(fromStart){
+      if(reduce) return;
+      clearTimeout(timer); started=true; resume=false;
+      if(fromStart||current===points.length) draw(1);
+      playing=true; status.textContent='Playing recorded pages'; buttons();
+      timer=setTimeout(advance,300);
+    }
+    playButton.addEventListener('click',function(){
+      if(playing) pause('Replay paused',false); else play(false);
+    });
+    restart.addEventListener('click',function(){play(true);});
+    slider.addEventListener('input',function(){
+      started=true; pause('Replay paused — inspect a recorded page',false);
+      draw(Number(slider.value));
+      if(current===points.length) status.textContent='Recorded scan complete';
+    });
+    controls.hidden=false;
+    buttons();
+    return {
+      sync:function(){
+        if(reduce) return;
+        if(visible()){
+          if(!started) play(true); else if(resume) play(false);
+        } else if(playing) pause('Paused while the chart is out of view',true);
+      },
+      setReduced:function(value){
+        if(value){started=true;pause('Recorded scan complete — reduced motion',false);draw(points.length);}
+        controls.hidden=value;
+      }
+    };
   }
+  var pagers=[].slice.call(document.querySelectorAll('.sonar')).map(setupReplay);
+  document.addEventListener('visibilitychange',function(){pagers.forEach(function(p){p.sync();});});
 
   function reveal(el){
     if(el.dataset.shown) return; el.dataset.shown='1';
@@ -522,8 +652,6 @@ footer{max-width:760px; margin:0 auto; padding:2.5rem 20px 4rem; color:var(--mut
     if(el.matches('[data-count]')) countup(el);
     var cs=el.querySelectorAll('[data-count]');
     for(var i=0;i<cs.length;i++) countup(cs[i]);
-    var ty=el.querySelectorAll('.type');
-    for(var j=0;j<ty.length;j++) typeout(ty[j]);
   }
 
   // Reveal + depth-gauge tracking are driven by an rAF-throttled scroll handler
@@ -539,25 +667,56 @@ footer{max-width:760px; margin:0 auto; padding:2.5rem 20px 4rem; color:var(--mut
   var reveals=[].slice.call(document.querySelectorAll('.reveal'));
   var dots=[].slice.call(document.querySelectorAll('.gauge a'));
   var secs=dots.map(function(a){return document.querySelector(a.getAttribute('href'));});
-  var ticking=false;
+  var ticking=false, activeSection=-1, lastScroll=window.scrollY;
+  secs.forEach(function(section){
+    section.addEventListener('animationend',function(e){
+      if(e.animationName==='depth-enter') section.classList.remove('section-enter');
+    });
+  });
   function tick(){
     ticking=false;
     var vh=window.innerHeight;
     for(var i=reveals.length-1;i>=0;i--){
-      if(reveals[i].getBoundingClientRect().top < vh*0.85){ reveal(reveals[i]); reveals.splice(i,1); }
+      if(reduce||reveals[i].getBoundingClientRect().top < vh*0.85){ reveal(reveals[i]); reveals.splice(i,1); }
     }
     var active=-1;
     for(var k=0;k<secs.length;k++){
       if(secs[k] && secs[k].getBoundingClientRect().top <= vh*0.5) active=k;
     }
+    // A short last section must still become active at the document bottom.
+    if(window.scrollY>0 && window.scrollY+vh>=document.documentElement.scrollHeight-2) active=secs.length-1;
+    if(active!==activeSection){
+      secs.forEach(function(section){section.classList.remove('section-enter');});
+      if(active>=0){
+        var section=secs[active];
+        section.dataset.direction=window.scrollY<lastScroll?'up':'down';
+        if(!reduce) section.classList.add('section-enter');
+      }
+      activeSection=active;
+    }
+    lastScroll=window.scrollY;
     for(var m=0;m<dots.length;m++){
       if(m===active){ dots[m].classList.add('on'); dots[m].setAttribute('aria-current','true'); }
       else { dots[m].classList.remove('on'); dots[m].removeAttribute('aria-current'); }
     }
+    pagers.forEach(function(p){p.sync();});
   }
   function onScroll(){ if(ticking) return; ticking=true; requestAnimationFrame(tick); }
   window.addEventListener('scroll', onScroll, {passive:true});
   window.addEventListener('resize', onScroll);
+  window.addEventListener('pageshow', onScroll);
+  function motionChanged(){
+    reduce=!!(mq&&mq.matches);
+    root.classList.toggle('js-anim',!reduce);
+    secs.forEach(function(section){section.classList.remove('section-enter');});
+    pagers.forEach(function(p){p.setReduced(reduce);});
+    onScroll();
+  }
+  if(mq){
+    if(mq.addEventListener) mq.addEventListener('change',motionChanged);
+    else if(mq.addListener) mq.addListener(motionChanged);
+  }
+  pagers.forEach(function(p){p.setReduced(!!reduce);});
   onScroll();
 })();
 </script>

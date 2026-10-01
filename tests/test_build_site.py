@@ -197,16 +197,34 @@ def test_section1_countups_target_agreed_values():
 
 # ---------------- Item 14: section 2 finding micro-visuals ----------------
 
-def test_finding_a_terminal_types_verbatim_32601():
+def test_finding_a_terminal_shows_dated_evidence_not_a_live_site_error():
+    from html import unescape
+
     d = load_data(ROOT)
     sec2 = _section(render(d), "sec-2")
-    assert 'class="terminal"' in sec2, "no terminal micro-visual"
-    # the verbatim message must be present as static text (typing is JS-only)
-    assert d["msg_32601"] is not None
-    # full verbatim message lives inside the terminal element
-    m = re.search(r'class="terminal".*?</figure>', sec2, flags=re.DOTALL)
-    assert "JSON-RPC on public fullnodes has been deprecated" in m.group(0)
-    assert "-32601" in m.group(0)
+    match = re.search(r'<figure class="terminal".*?</figure>', sec2, flags=re.DOTALL)
+    assert match, "no archived response figure"
+    fig = match.group(0)
+    fixture = (ROOT / "fixtures" / "mysten_fullnode_jsonrpc_2026-09-27.md").read_text()
+    request_match = re.search(r"^- Request: `(.+)`$", fixture, re.MULTILINE)
+    time_match = re.search(r"^- UTC: (.+)$", fixture, re.MULTILINE)
+    assert request_match and time_match
+    request = json.loads(request_match.group(1))
+    recorded_at = time_match.group(1)
+
+    # The displayed request must be the request that actually produced the evidence.
+    assert request["method"] in fig
+    assert "suix_queryEvents" not in fig
+    payload = re.search(r'class="term-request"[^>]*>(.*?)</code>', fig, re.DOTALL)
+    assert payload
+    assert json.loads(unescape(payload.group(1))) == request
+    assert recorded_at in fig
+    assert "Recorded response" in fig
+    assert "not a live request or a website error" in fig
+    assert "mysten_fullnode_jsonrpc_2026-09-27.md" in fig
+    assert d["msg_32601"] in unescape(fig)
+    assert "-32601" in fig
+    assert 'class="type"' not in fig, "typing animation makes historical evidence look live"
 
 
 def test_finding_b_module_vs_event_type_diagram():
@@ -481,3 +499,22 @@ def test_pager_caption_says_it_is_a_substitute_and_cites_source():
 def test_pager_axes_are_labelled():
     fig = _pager_fig(render(load_data(ROOT)))
     assert "page" in fig and "cumulative events" in fig
+
+
+def test_pager_replay_controls_keep_recorded_final_values_without_js():
+    pages = _fixture_q1b_pages()
+    fig = _pager_fig(render(load_data(ROOT)))
+    total = sum(nodes for nodes, _ in pages)
+    assert "Recorded replay" in fig
+    assert "not live" in fig
+    assert "Playback timing is illustrative" in fig
+    assert 'class="pg-controls" hidden' in fig
+    for control in ("pg-play", "pg-restart", "pg-slider"):
+        assert f'class="{control}"' in fig
+    assert f'min="1" max="{len(pages)}" value="{len(pages)}"' in fig
+    assert f'class="pg-page">{len(pages)}</span>' in fig
+    assert f'class="pg-nodes">{pages[-1][0]}</span>' in fig
+    assert f'class="pg-total">{total:,}</span>' in fig
+    assert 'class="pg-next">false</span>' in fig
+    assert 'class="pg-head"' in fig
+    assert 'id="q1b-page"' in fig and 'for="q1b-page"' in fig

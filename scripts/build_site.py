@@ -119,6 +119,13 @@ def load_data(root: pathlib.Path) -> dict:
 
     fullnode_md = (root / "fixtures" / f"mysten_fullnode_jsonrpc_{DATE}.md").read_text()
     msg_32601 = _extract_fence(fullnode_md, "Verbatim error message:")
+    fullnode_fields = dict(re.findall(r"^- (Endpoint|Request|UTC): (.+)$", fullnode_md, re.MULTILINE))
+    fullnode = {
+        "endpoint": fullnode_fields["Endpoint"].strip("`"),
+        "request": json.loads(fullnode_fields["Request"].strip("`")),
+        "recorded_at": fullnode_fields["UTC"],
+        "source": f"fixtures/mysten_fullnode_jsonrpc_{DATE}.md",
+    }
 
     gt = json.loads((root / "fixtures" / f"ground_truth_{DATE}.data.json").read_text())
     lags = []
@@ -145,6 +152,7 @@ def load_data(root: pathlib.Path) -> dict:
         "q1b_count": q1b_count,
         "verdict": verdict,
         "msg_32601": msg_32601,
+        "fullnode": fullnode,
         "latency": _latencies(root, list(cfg["providers"])),
         "q1b_pages": q1b_pages,
         "ts": {
@@ -248,12 +256,23 @@ em{color:var(--accent)}
 /* ---- section shells: each a step down into the deep ---- */
 .depth{position:relative; padding:4.5rem 0 5rem}
 .depth>.inner{max-width:760px; margin:0 auto; padding:0 20px}
+.depth{scroll-margin-top:12px}
+.js-anim .depth.section-enter>.inner{animation:depth-enter .72s cubic-bezier(.2,.75,.25,1)}
+.depth[data-direction="up"]{--enter-offset:-28px}
+.js-anim .depth.section-enter::after{content:""; position:absolute; inset:0 0 auto;
+  height:180px; pointer-events:none;
+  background:linear-gradient(180deg,rgba(99,216,206,.16),transparent);
+  animation:depth-wash .85s ease-out both}
+@keyframes depth-enter{
+  from{opacity:.28; transform:translateY(var(--enter-offset,28px))}
+  to{opacity:1; transform:translateY(0)}}
+@keyframes depth-wash{from{opacity:.8; transform:translateY(-12px)} to{opacity:0; transform:translateY(22px)}}
 .d1{background:var(--sea1)} .d2{background:var(--sea2)} .d3{background:var(--sea3)}
 .d4{background:var(--sea4)} .d5{background:var(--sea5)} .d6{background:var(--sea6)}
 .wave{position:absolute; top:-1px; left:0; width:100%; height:64px; line-height:0; pointer-events:none}
 .wave svg{width:100%; height:100%; display:block}
-.wave .w1{animation:drift 14s linear infinite}
-.wave .w2{animation:drift 22s linear infinite reverse}
+.js-anim .wave .w1{animation:drift 14s linear infinite}
+.js-anim .wave .w2{animation:drift 22s linear infinite reverse}
 @keyframes drift{from{transform:translateX(0)} to{transform:translateX(-720px)}}
 
 h1{font-size:2.1rem; margin:.1em 0; letter-spacing:.3px}
@@ -292,10 +311,12 @@ td code{overflow-wrap:normal; word-break:normal}
 #hero .tag{color:rgba(255,255,255,.85); font-size:1.15rem; max-width:36ch; margin:.4em 0 0}
 .scrollcue{margin-top:1.6rem; color:rgba(255,255,255,.7); font-size:.85rem; letter-spacing:.12em;
   text-transform:uppercase}
-.scrollcue span{display:inline-block; animation:bob 2.4s ease-in-out infinite}
+.scrollcue span{display:inline-block}
+.js-anim .scrollcue span{animation:bob 2.4s ease-in-out infinite}
 @keyframes bob{0%,100%{transform:translateY(0)} 50%{transform:translateY(5px)}}
 #hero .buoy{position:absolute; z-index:1; right:15%; bottom:33%; width:64px; height:64px;
-  color:#fff; filter:drop-shadow(0 3px 6px rgba(0,0,0,.35)); animation:buoybob 3.6s ease-in-out infinite}
+  color:#fff; filter:drop-shadow(0 3px 6px rgba(0,0,0,.35))}
+.js-anim #hero .buoy{animation:buoybob 3.6s ease-in-out infinite}
 @keyframes buoybob{0%,100%{transform:translateY(0) rotate(-4deg)} 50%{transform:translateY(-9px) rotate(4deg)}}
 
 /* ---- section 1: fleet of agreement + ink stamp ---- */
@@ -311,7 +332,8 @@ td code{overflow-wrap:normal; word-break:normal}
 .ships-fig{margin:1.4em 0 .6em}
 .ships{width:100%; height:auto; display:block}
 .ships .waterline{stroke-dasharray:0}
-.ships .ship{animation:shipbob 4.6s ease-in-out infinite; transform-box:fill-box; transform-origin:center}
+.ships .ship{transform-box:fill-box; transform-origin:center}
+.js-anim .ships .ship{animation:shipbob 4.6s ease-in-out infinite}
 .ships .ship:nth-of-type(2){animation-delay:-.6s}
 .ships .ship:nth-of-type(3){animation-delay:-1.2s}
 .ships .ship:nth-of-type(4){animation-delay:-1.8s}
@@ -351,7 +373,7 @@ td code{overflow-wrap:normal; word-break:normal}
   width:2px; background:var(--line)}
 .gauge li{position:relative}
 .gauge a{display:flex; align-items:center; gap:.55rem; padding:.28rem 0;
-  color:var(--muted); text-decoration:none; font-size:.78rem}
+  min-height:44px; min-width:44px; color:var(--muted); text-decoration:none; font-size:.78rem}
 .gauge .dot{width:14px; height:14px; border-radius:50%; border:2px solid var(--line);
   background:transparent; flex:0 0 auto; position:relative; z-index:1; transition:all .3s}
 .gauge .lbl{opacity:0; transform:translateX(-4px); transition:opacity .25s, transform .25s;
@@ -373,15 +395,15 @@ figure{margin:0}
 .term-bar{display:flex; align-items:center; gap:6px; padding:8px 12px;
   background:rgba(255,255,255,.05); border-bottom:1px solid var(--line);
   font-size:.78rem; color:var(--muted)}
-.term-bar i{width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.22)}
 .term-bar span{margin-left:6px}
+.term-tag{margin-left:auto; color:var(--accent); font-weight:600; white-space:nowrap}
 .term-body{margin:0; padding:12px 14px; background:transparent; border:0; border-radius:0;
   font-size:.82rem; white-space:pre-wrap; word-break:break-word}
 .term-cmd{color:#8fe6dd} .term-err{color:#ffb4b4}
 .term-err b{color:#ff8f8f}
-.term-err .type::after{content:"▏"; color:#63d8ce}
-.term-err .type.typing::after{animation:blink 1s steps(1) infinite}
-@keyframes blink{50%{opacity:0}}
+.term-note{padding:12px 14px; border-top:1px solid var(--line); color:var(--muted);
+  font-size:.8rem; text-align:left}
+.term-note strong{color:var(--accent)}
 
 /* (b) diagram */
 .dg-row{display:flex; align-items:center; gap:.7rem; flex-wrap:wrap}
@@ -396,9 +418,17 @@ figure{margin:0}
 
 /* (c) sonar-style pagination step chart (real page sizes) */
 .sonar{text-align:center}
+.pg-title{display:flex; align-items:center; justify-content:space-between; gap:.6rem;
+  flex-wrap:wrap; margin:0 0 .7rem; font-size:.87rem; text-align:left}
+.pg-title>span{font-weight:650; color:var(--ink)}
+.pg-title small{color:var(--muted); font-weight:400}
+.pg-indicator{display:inline-block; width:7px; height:7px; margin-right:.5em;
+  border-radius:50%; background:var(--muted)}
+.sonar[data-playing="true"] .pg-indicator{background:var(--accent);
+  box-shadow:0 0 0 4px rgba(99,216,206,.13)}
 .sonar-scope{position:relative; display:block; max-width:480px; margin:0 auto;
   background:radial-gradient(ellipse at 50% 60%,rgba(99,216,206,.10),rgba(2,16,24,.55) 75%);
-  border:1px solid rgba(99,216,206,.28); border-radius:12px; padding:6px 4px 2px}
+  border:1px solid rgba(99,216,206,.28); border-radius:12px; padding:10px}
 .sonar-scope svg{width:100%; height:auto; display:block}
 .sonar .pg-grid{stroke:rgba(99,216,206,.16)}
 .sonar .pg-axis{stroke:rgba(255,255,255,.35)}
@@ -407,9 +437,31 @@ figure{margin:0}
 .sonar .seabed{fill:none; stroke:#63d8ce; stroke-width:2; filter:drop-shadow(0 0 3px rgba(99,216,206,.7))}
 .sonar .pg-dot{fill:#63d8ce}
 .sonar .pg-dot.end{fill:#fff; stroke:#63d8ce; stroke-width:2}
-.sonar .sweep{animation:sweepx 5s linear infinite}
-@keyframes sweepx{from{transform:translateX(0)} to{transform:translateX(290px)}}
-.sonar-read{display:block; margin-top:.3em; font-size:.8rem; color:var(--muted)}
+.sonar .pg-fill{fill:rgba(99,216,206,.07); stroke:none}
+.sonar .pg-head{fill:#fff; stroke:var(--accent); stroke-width:2;
+  filter:drop-shadow(0 0 5px rgba(99,216,206,.65))}
+.pg-readout{display:flex; flex-wrap:wrap; justify-content:space-between; gap:.4em 1em;
+  padding:.65rem .2rem; border-top:1px solid var(--line); font-size:.82rem;
+  color:var(--muted); font-variant-numeric:tabular-nums; text-align:left}
+.pg-readout strong{color:var(--accent)}
+.pg-readout code{font-size:.88em}
+.pg-controls:not([hidden]){display:flex; flex-wrap:wrap; align-items:center; gap:.45rem;
+  border-top:1px solid var(--line); padding-top:.65rem; text-align:left}
+.pg-controls button{min-height:44px; padding:.4rem .75rem; border:1px solid var(--line);
+  border-radius:6px; background:transparent; color:var(--ink); font:inherit;
+  font-size:.8rem; cursor:pointer}
+.pg-controls .pg-play{background:var(--accent); color:var(--accent-ink);
+  border-color:var(--accent); min-width:115px; font-weight:650}
+.pg-controls button:hover{filter:brightness(1.12)}
+.pg-controls button:disabled{opacity:.55; cursor:default}
+.pg-controls button:focus-visible,.pg-slider:focus-visible{
+  outline:2px solid var(--accent); outline-offset:3px}
+.pg-scrub{display:flex; align-items:center; gap:.5rem; flex:1 1 140px;
+  font-size:.78rem; color:var(--muted)}
+.pg-slider{width:100%; min-width:0; min-height:44px; accent-color:var(--accent); cursor:pointer}
+.pg-state{flex-basis:100%; color:var(--accent); font-size:.75rem; min-height:1.6em}
+.pg-note{font-size:.73rem; color:var(--muted); text-align:left; margin:.35rem 0 .55rem}
+.sonar-read{display:block; margin-top:.5em; font-size:.76rem; color:var(--muted)}
 
 /* (d) timeline */
 .tl-track{position:relative; display:flex; align-items:flex-start;
@@ -504,10 +556,14 @@ footer{max-width:760px; margin:0 auto; padding:2.5rem 20px 4rem; color:var(--mut
   body{font-size:16px}
   .gauge{left:0; right:0; top:auto; bottom:0; transform:none;
     background:rgba(4,29,46,.92); backdrop-filter:blur(6px); border-top:1px solid var(--line)}
-  .gauge ol{display:flex; justify-content:space-between; padding:.5rem .6rem}
+  .gauge ol{display:grid; grid-template-columns:repeat(6,minmax(0,1fr));
+    padding:.4rem .2rem max(.4rem,env(safe-area-inset-bottom))}
+  .gauge li{margin:0; min-width:0}
   .gauge ol::before{display:none}
-  .gauge a{flex-direction:column; gap:.2rem; padding:.15rem .3rem; font-size:.62rem; text-align:center}
+  .gauge a{flex-direction:column; justify-content:center; gap:.2rem; padding:.2rem .1rem;
+    font-size:.62rem; text-align:center}
   .gauge .lbl{opacity:1; transform:none}
+  .gauge .section-number{display:none}
   .depth{padding:3.2rem 0 4rem}
   h1{font-size:1.7rem} h2{font-size:1.3rem}
   footer{padding-bottom:5.5rem}
@@ -522,7 +578,7 @@ footer{max-width:760px; margin:0 auto; padding:2.5rem 20px 4rem; color:var(--mut
   .js-anim .reveal .struck{text-decoration:line-through !important}
   .js-anim .reveal .struck::after{width:0 !important}
   .js-anim .reveal .corrected{opacity:1 !important; transform:none !important}
-  .sonar .sweep{display:none}
+  .depth.section-enter::after{display:none}
 }
 """
 
@@ -531,17 +587,18 @@ JS = """
   var root=document.documentElement;
   var mq=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)');
   var reduce=mq&&mq.matches;
-  // Progressive enhancement: with reduced motion (or no JS at all) leave the
-  // fully rendered, final-number page exactly as served. Motion is additive.
-  if(reduce) return;
-  root.classList.add('js-anim');
+  // Navigation still works under reduced motion; only animation is disabled.
+  // With no JS, the complete page and final values remain visible as served.
+  root.classList.toggle('js-anim',!reduce);
 
   function countup(el){
     if(el.dataset.done) return; el.dataset.done='1';
     var to=parseFloat(el.getAttribute('data-count'));
     var dec=parseInt(el.getAttribute('data-dec')||'0',10);
+    if(reduce){el.textContent=to.toFixed(dec);return;}
     var t0=null, dur=900;
     function frame(t){ if(t0===null)t0=t;
+      if(reduce){el.textContent=to.toFixed(dec);return;}
       var p=Math.min((t-t0)/dur,1); var v=to*(1-Math.pow(1-p,3));
       el.textContent=v.toFixed(dec);
       if(p<1) requestAnimationFrame(frame); else el.textContent=to.toFixed(dec);
@@ -549,15 +606,93 @@ JS = """
     requestAnimationFrame(frame);
   }
 
-  function typeout(el){
-    if(el.dataset.typed) return; el.dataset.typed='1';
-    var full=el.textContent, i=0; el.textContent='';
-    el.classList.add('typing');
-    (function tick(){ el.textContent=full.slice(0,i++);
-      if(i<=full.length) setTimeout(tick,12);
-      else el.classList.remove('typing');
-    })();
+  // Replay the saved observations, never poll RPCs or invent changing values.
+  function setupReplay(fig){
+    var points=[].slice.call(fig.querySelectorAll('.pg-dot'));
+    var controls=fig.querySelector('.pg-controls');
+    var scope=fig.querySelector('.sonar-scope'), svg=scope.querySelector('svg');
+    var path=fig.querySelector('.seabed'), fill=fig.querySelector('.pg-fill');
+    var head=fig.querySelector('.pg-head'), slider=fig.querySelector('.pg-slider');
+    var playButton=fig.querySelector('.pg-play'), restart=fig.querySelector('.pg-restart');
+    var status=fig.querySelector('.pg-state');
+    var pageLabel=fig.querySelector('.pg-page'), totalLabel=fig.querySelector('.pg-total');
+    var nodesLabel=fig.querySelector('.pg-nodes'), nextLabel=fig.querySelector('.pg-next');
+    var origin='M'+fig.dataset.startX+','+fig.dataset.startY;
+    var paths=[], trace=origin;
+    points.forEach(function(dot){
+      trace+=' V'+dot.getAttribute('cy')+' H'+dot.getAttribute('cx'); paths.push(trace);
+    });
+    var current=points.length, timer=null, playing=false, started=false, resume=false;
+
+    function buttons(){
+      fig.dataset.playing=String(playing);
+      playButton.setAttribute('aria-pressed',String(playing));
+      playButton.textContent=playing?'Pause replay':'Play replay';
+    }
+    function draw(index){
+      current=Math.max(1,Math.min(points.length,index));
+      var dot=points[current-1], data=dot.dataset;
+      var x=dot.getAttribute('cx'), y=dot.getAttribute('cy');
+      path.setAttribute('d',paths[current-1]);
+      fill.setAttribute('d',paths[current-1]+' V'+fig.dataset.startY+' H'+fig.dataset.startX+' Z');
+      head.setAttribute('cx',x); head.setAttribute('cy',y);
+      points.forEach(function(p,i){p.style.visibility=i<current?'visible':'hidden';});
+      pageLabel.textContent=String(current);
+      totalLabel.textContent=Number(data.cum).toLocaleString('en-US');
+      nodesLabel.textContent=data.nodes; nextLabel.textContent=data.hasNext;
+      slider.value=String(current);
+      var description='Recorded page '+current+' of '+points.length+': '+data.nodes+
+        ' nodes, '+data.cum+' cumulative events; hasNextPage '+data.hasNext;
+      slider.setAttribute('aria-valuetext',description);
+      svg.setAttribute('aria-label',description);
+    }
+    function visible(){
+      var r=scope.getBoundingClientRect();
+      return !document.hidden && r.top<window.innerHeight*.85 && r.bottom>window.innerHeight*.12;
+    }
+    function pause(message,autoResume){
+      clearTimeout(timer); timer=null; playing=false; resume=!!autoResume;
+      status.textContent=message; buttons();
+    }
+    function advance(){
+      if(!visible()){pause('Paused while the chart is out of view',true);return;}
+      draw(current+1);
+      if(current===points.length){pause('Recorded scan complete',false);return;}
+      timer=setTimeout(advance,300);
+    }
+    function play(fromStart){
+      if(reduce) return;
+      clearTimeout(timer); started=true; resume=false;
+      if(fromStart||current===points.length) draw(1);
+      playing=true; status.textContent='Playing recorded pages'; buttons();
+      timer=setTimeout(advance,300);
+    }
+    playButton.addEventListener('click',function(){
+      if(playing) pause('Replay paused',false); else play(false);
+    });
+    restart.addEventListener('click',function(){play(true);});
+    slider.addEventListener('input',function(){
+      started=true; pause('Replay paused — inspect a recorded page',false);
+      draw(Number(slider.value));
+      if(current===points.length) status.textContent='Recorded scan complete';
+    });
+    controls.hidden=false;
+    buttons();
+    return {
+      sync:function(){
+        if(reduce) return;
+        if(visible()){
+          if(!started) play(true); else if(resume) play(false);
+        } else if(playing) pause('Paused while the chart is out of view',true);
+      },
+      setReduced:function(value){
+        if(value){started=true;pause('Recorded scan complete — reduced motion',false);draw(points.length);}
+        controls.hidden=value;
+      }
+    };
   }
+  var pagers=[].slice.call(document.querySelectorAll('.sonar')).map(setupReplay);
+  document.addEventListener('visibilitychange',function(){pagers.forEach(function(p){p.sync();});});
 
   function reveal(el){
     if(el.dataset.shown) return; el.dataset.shown='1';
@@ -565,8 +700,6 @@ JS = """
     if(el.matches('[data-count]')) countup(el);
     var cs=el.querySelectorAll('[data-count]');
     for(var i=0;i<cs.length;i++) countup(cs[i]);
-    var ty=el.querySelectorAll('.type');
-    for(var j=0;j<ty.length;j++) typeout(ty[j]);
   }
 
   // Reveal + depth-gauge tracking are driven by an rAF-throttled scroll handler
@@ -582,25 +715,56 @@ JS = """
   var reveals=[].slice.call(document.querySelectorAll('.reveal'));
   var dots=[].slice.call(document.querySelectorAll('.gauge a'));
   var secs=dots.map(function(a){return document.querySelector(a.getAttribute('href'));});
-  var ticking=false;
+  var ticking=false, activeSection=-1, lastScroll=window.scrollY;
+  secs.forEach(function(section){
+    section.addEventListener('animationend',function(e){
+      if(e.animationName==='depth-enter') section.classList.remove('section-enter');
+    });
+  });
   function tick(){
     ticking=false;
     var vh=window.innerHeight;
     for(var i=reveals.length-1;i>=0;i--){
-      if(reveals[i].getBoundingClientRect().top < vh*0.85){ reveal(reveals[i]); reveals.splice(i,1); }
+      if(reduce||reveals[i].getBoundingClientRect().top < vh*0.85){ reveal(reveals[i]); reveals.splice(i,1); }
     }
     var active=-1;
     for(var k=0;k<secs.length;k++){
       if(secs[k] && secs[k].getBoundingClientRect().top <= vh*0.5) active=k;
     }
+    // A short last section must still become active at the document bottom.
+    if(window.scrollY>0 && window.scrollY+vh>=document.documentElement.scrollHeight-2) active=secs.length-1;
+    if(active!==activeSection){
+      secs.forEach(function(section){section.classList.remove('section-enter');});
+      if(active>=0){
+        var section=secs[active];
+        section.dataset.direction=window.scrollY<lastScroll?'up':'down';
+        if(!reduce) section.classList.add('section-enter');
+      }
+      activeSection=active;
+    }
+    lastScroll=window.scrollY;
     for(var m=0;m<dots.length;m++){
       if(m===active){ dots[m].classList.add('on'); dots[m].setAttribute('aria-current','true'); }
       else { dots[m].classList.remove('on'); dots[m].removeAttribute('aria-current'); }
     }
+    pagers.forEach(function(p){p.sync();});
   }
   function onScroll(){ if(ticking) return; ticking=true; requestAnimationFrame(tick); }
   window.addEventListener('scroll', onScroll, {passive:true});
   window.addEventListener('resize', onScroll);
+  window.addEventListener('pageshow', onScroll);
+  function motionChanged(){
+    reduce=!!(mq&&mq.matches);
+    root.classList.toggle('js-anim',!reduce);
+    secs.forEach(function(section){section.classList.remove('section-enter');});
+    pagers.forEach(function(p){p.setReduced(reduce);});
+    onScroll();
+  }
+  if(mq){
+    if(mq.addEventListener) mq.addEventListener('change',motionChanged);
+    else if(mq.addListener) mq.addListener(motionChanged);
+  }
+  pagers.forEach(function(p){p.setReduced(!!reduce);});
   onScroll();
 })();
 """
@@ -710,18 +874,27 @@ def _fig_latency(lat):
 
 # ---- Section 2 finding micro-visuals (one per finding) ----
 
-def _fig_terminal(msg):
-    """(a) A terminal that types the verbatim -32601 message on reveal."""
+def _fig_terminal(msg, evidence):
+    """(a) Dated, verbatim evidence — not a live terminal or site failure."""
+    endpoint = html.escape(evidence["endpoint"])
+    recorded_at = html.escape(evidence["recorded_at"])
+    request = html.escape(json.dumps(evidence["request"], separators=(",", ":")))
     return (
-        '<figure class="terminal" aria-label="Terminal: a JSON-RPC call to the '
-        'public fullnode returns error -32601, method not found.">'
-        '<div class="term-bar"><i></i><i></i><i></i>'
-        '<span>fullnode.mainnet.sui.io · JSON-RPC</span></div>'
+        '<figure class="terminal" aria-label="Archived JSON-RPC evidence: '
+        'the public fullnode returned error -32601, method not found.">'
+        '<div class="term-bar"><span>Legacy JSON-RPC</span>'
+        '<b class="term-tag">Recorded response</b></div>'
         '<pre class="term-body">'
-        '<span class="term-cmd">$ POST / suix_queryEvents { MoveModule: 0x2::coin }</span>\n'
+        f'<span class="term-cmd">POST {endpoint}</span>\n'
+        f'<code class="term-request">{request}</code>\n\n'
         '<span class="term-err">✕ error <b>-32601</b>: '
-        '<span class="type">' + html.escape(msg) + '</span></span>'
-        '</pre></figure>'
+        + html.escape(msg) + '</span></pre>'
+        '<figcaption class="term-note"><strong>Archived evidence</strong> · '
+        f'<time datetime="{recorded_at}">{recorded_at[:10]}</time> — '
+        'not a live request or a website error. The endpoint rejected legacy JSON-RPC; '
+        'the spike uses GraphQL. '
+        f'<a href="{REPO_URL}/{html.escape(evidence["source"])}">View recorded source</a>.'
+        '</figcaption></figure>'
     )
 
 
@@ -754,7 +927,7 @@ def _fig_sonar(pages, q1b_type):
     """(c) Sonar-style step chart of a REAL paginated GraphQL scan: x = page,
     y = cumulative events. Every vertex comes from `pages` (_q1b_pages():
     len(data.events.nodes) per committed raw body of the run-1 Q1b scan).
-    The sweep bar is decoration only; the trace is the data."""
+    The complete chart is static HTML; JS replays these same recorded pages."""
     n = len(pages)
     total = sum(pg["nodes"] for pg in pages)
 
@@ -797,25 +970,42 @@ def _fig_sonar(pages, q1b_type):
     raw_dir = pages[0]["raw_path"].rsplit("/", 1)[0]
     all_advance = all(pg["has_next"] for pg in pages[:-1]) and not last["has_next"]
     return (
-        f'<figure class="sonar" data-pages="{n}" aria-label="Step chart of a real '
+        f'<figure class="sonar" data-pages="{n}" data-start-x="{x(0)}" '
+        f'data-start-y="{y(0)}" aria-label="Step chart of a real '
         f'GraphQL events scan: {n} pages, cumulative events rising to {total:,}; no page '
         'was empty.">'
+        '<p class="pg-title"><span><i class="pg-indicator" aria-hidden="true"></i>'
+        f'Recorded replay</span><small>not live · {DATE}</small></p>'
         '<div class="sonar-scope">'
-        '<svg viewBox="0 0 340 220" role="img" aria-label="Cumulative events by page">'
-        '<defs><linearGradient id="sg" x1="0" x2="1">'
-        '<stop offset="0" stop-color="#63d8ce" stop-opacity="0"/>'
-        '<stop offset="1" stop-color="#63d8ce" stop-opacity=".28"/></linearGradient></defs>'
+        '<svg id="q1b-chart" viewBox="0 0 340 220" role="img" aria-label="Cumulative events by page">'
         f'{ygrid}'
         f'<line class="pg-axis" x1="{PG_X0}" x2="{PG_X1}" y1="{PG_Y0}" y2="{PG_Y0}"/>'
-        f'<rect class="sweep" x="{PG_X0 - 36}" y="{PG_Y1}" width="36" '
-        f'height="{PG_Y0 - PG_Y1}" fill="url(#sg)" aria-hidden="true"/>'
+        f'<path class="pg-fill" d="{d} V{y(0)} H{x(0)} Z" aria-hidden="true"/>'
         f'<path class="seabed" d="{d}"/>'
         f'{dots}{xgrid}'
+        f'<circle class="pg-head" cx="{x(n)}" cy="{y(total)}" r="4.2" aria-hidden="true"/>'
         f'<text class="pg-lbl" x="{(PG_X0 + PG_X1) / 2}" y="{PG_Y0 + 36}" '
         f'text-anchor="middle">page (first: {pages[0]["first"]})</text>'
         f'<text class="pg-lbl" x="11" y="{(PG_Y0 + PG_Y1) / 2}" text-anchor="middle" '
         f'transform="rotate(-90 11 {(PG_Y0 + PG_Y1) / 2})">cumulative events</text>'
         '</svg>'
+        '<div class="pg-readout" aria-live="off">'
+        f'<span>Page <strong><span class="pg-page">{n}</span></strong> / {n}</span>'
+        f'<span><strong><span class="pg-total">{total:,}</span></strong> events</span>'
+        f'<span>+<span class="pg-nodes">{last["nodes"]}</span> this page</span>'
+        f'<code>hasNextPage: <span class="pg-next">{str(last["has_next"]).lower()}</span></code>'
+        '</div>'
+        '<div class="pg-controls" hidden>'
+        '<button class="pg-play" type="button" aria-controls="q1b-chart" '
+        'aria-pressed="false">Play replay</button>'
+        '<button class="pg-restart" type="button" aria-controls="q1b-chart">Restart</button>'
+        '<label class="pg-scrub" for="q1b-page">Page '
+        f'<input class="pg-slider" id="q1b-page" type="range" min="1" max="{n}" value="{n}" '
+        'step="1" aria-controls="q1b-chart" aria-describedby="q1b-replay-note"></label>'
+        '<span class="pg-state" role="status" aria-live="polite">Recorded scan complete</span>'
+        '</div>'
+        '<p class="pg-note" id="q1b-replay-note">Replay of saved responses, not live data. '
+        'Playback timing is illustrative, not recorded request timing.</p>'
         f'<span class="sonar-read">{n} pages · {full}×{pages[0]["first"]} + '
         f'{last["nodes"]} = {total:,} events · <code>hasNextPage: '
         f'{str(last["has_next"]).lower()}</code> only on page {n}</span>'
@@ -982,9 +1172,9 @@ def _gauge(d):
     items = ""
     for i, (sid, label) in enumerate(GAUGE, start=1):
         items += (
-            f'<li><a href="#{sid}">'
+            f'<li><a href="#{sid}" aria-label="Section {i}: {html.escape(label)}">'
             f'<span class="dot"></span>'
-            f'<span class="lbl">{i} · {html.escape(label)}</span>'
+            f'<span class="lbl"><span class="section-number">{i} · </span>{html.escape(label)}</span>'
             f'</a></li>'
         )
     return f'<nav class="gauge" aria-label="Depth gauge — jump to a section"><ol>{items}</ol></nav>'
@@ -1091,9 +1281,10 @@ def render(d: dict) -> str:
     <h2><span class="n">2</span> Findings Sui developers can use today</h2>
 
     <h3>Mysten's public fullnode JSON-RPC is deprecated</h3>
-    <p>A JSON-RPC call to <code>fullnode.mainnet.sui.io</code> returns error
+    <p>In the recorded check on <time datetime="{e(d['fullnode']['recorded_at'])}">{DATE}</time>,
+    a JSON-RPC call to <code>fullnode.mainnet.sui.io</code> returned error
     <code>-32601</code> (verbatim):</p>
-    {_fig_terminal(d['msg_32601'])}
+    {_fig_terminal(d['msg_32601'], d['fullnode'])}
     <p>Use GraphQL or gRPC. The three third-party JSON-RPC providers below still serve
     the legacy JSON-RPC surface.</p>
 

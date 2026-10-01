@@ -107,11 +107,33 @@ static text. The page is built as **progressive enhancement** — with JavaScrip
 disabled, or with `prefers-reduced-motion: reduce`, every section, visual, and
 final number is fully visible and the animation is off. It is responsive down to
 375&nbsp;px, uses semantic headings and keyboard-reachable links, and stays well
-under 250&nbsp;KB (~43&nbsp;KB).
+under 250&nbsp;KB.
+
+The Section 2 error panel is explicitly **archived evidence**, with the request
+and timestamp read from its fixture, not a live website error. The pagination
+chart replays the recorded pages: the step trace, event counts, and `hasNextPage`
+state advance together. Play/pause, restart, and a keyboard-accessible page
+slider are available with JavaScript; the replay pauses off-screen. Playback
+speed is illustrative, **not live data or recorded request timing**. Sections
+1–6 use directional fade/slide transitions on entry and re-entry. Reduced-motion
+preferences disable playback/transitions without disabling section navigation.
 
 Regenerate it with:
 
 ```bash
 .venv/bin/python scripts/build_site.py   # -> docs/index.html (+ CNAME, .nojekyll)
 ```
+
+Browser verification (Mac with Google Chrome installed; separate from the
+socket-blocked pytest suite):
+
+```bash
+uv run --no-project --with playwright --python .venv/bin/python python scripts/check_site_browser.py
+```
+
+The browser check loads the local HTML and blocks HTTP(S). It covers every replay
+page, pause/restart/seek and keyboard controls, all six section transitions,
+fast scrolling, a 375 px viewport, reduced motion (including changes during
+playback), and JavaScript disabled. The first `uv` run may download Playwright;
+the checks themselves never call an RPC provider.
 
