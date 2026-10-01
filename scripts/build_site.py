@@ -1,15 +1,15 @@
-"""Render docs/index.html from committed files — a scrollytelling "descent".
+"""Render docs/index.html from committed files — an interactive field report.
 
-Every number and date on the page is READ from the fixtures / spike_config /
+Every measurement and date on the page is READ from the fixtures / spike_config /
 summary files here — never typed by hand. The page is one self-contained HTML
-file: inline CSS, inline SVG, small inline vanilla JS, no external
+file: inline CSS, inline SVG, inline vanilla JS, no external
 fonts/scripts/images and no network requests.
 
-Design: a descent from the sea surface into the abyss. Six sections shade from
-sea teal at the top to abyssal navy at the bottom, separated by animated wave
-dividers, with a fixed depth gauge tracking scroll. Progressive enhancement:
-with JS off (or reduced motion on) all content and final numbers are visible;
-JS only adds motion.
+Design: industrial navy/cyan, original decorative particle meshes, six chapters,
+and paper-light Limits/Evidence sections. report_theme.py provides the shell
+and scroll-driven scene choreography. Progressive enhancement: with JS off
+(or reduced motion on) all content and final numbers remain visible;
+JS adds motion, never evidence.
 
 Run:  .venv/bin/python scripts/build_site.py
 """
@@ -23,6 +23,11 @@ import math
 import pathlib
 import re
 import statistics
+
+if __package__:
+    from .report_theme import MOTION_JS, THEME_CSS, mesh_definitions, scene_intro, site_header
+else:
+    from report_theme import MOTION_JS, THEME_CSS, mesh_definitions, scene_intro, site_header
 
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -257,16 +262,7 @@ em{color:var(--accent)}
 .depth{position:relative; padding:4.5rem 0 5rem}
 .depth>.inner{max-width:760px; margin:0 auto; padding:0 20px}
 .depth{scroll-margin-top:12px}
-.js-anim .depth.section-enter>.inner{animation:depth-enter .72s cubic-bezier(.2,.75,.25,1)}
-.depth[data-direction="up"]{--enter-offset:-28px}
-.js-anim .depth.section-enter::after{content:""; position:absolute; inset:0 0 auto;
-  height:180px; pointer-events:none;
-  background:linear-gradient(180deg,rgba(99,216,206,.16),transparent);
-  animation:depth-wash .85s ease-out both}
-@keyframes depth-enter{
-  from{opacity:.28; transform:translateY(var(--enter-offset,28px))}
-  to{opacity:1; transform:translateY(0)}}
-@keyframes depth-wash{from{opacity:.8; transform:translateY(-12px)} to{opacity:0; transform:translateY(22px)}}
+
 .d1{background:var(--sea1)} .d2{background:var(--sea2)} .d3{background:var(--sea3)}
 .d4{background:var(--sea4)} .d5{background:var(--sea5)} .d6{background:var(--sea6)}
 .wave{position:absolute; top:-1px; left:0; width:100%; height:64px; line-height:0; pointer-events:none}
@@ -326,7 +322,7 @@ td code{overflow-wrap:normal; word-break:normal}
   padding:.2em .7em; font-weight:800; letter-spacing:3px; font-size:1.05rem;
   transform:rotate(-7deg); opacity:.82; text-transform:uppercase; flex:0 0 auto;
   box-shadow:inset 0 0 0 1px rgba(99,216,206,.25)}
-.js-anim .reveal .stamp{opacity:0; transform:rotate(-7deg) scale(1.7)}
+.js-anim .reveal .stamp{opacity:0; transform:rotate(-7deg) scale(.92)}
 .js-anim .reveal.shown .stamp{opacity:.82; transform:rotate(-7deg) scale(1);
   transition:opacity .35s .35s ease, transform .4s .35s cubic-bezier(.2,1.5,.4,1)}
 .ships-fig{margin:1.4em 0 .6em}
@@ -548,9 +544,8 @@ figure{margin:0}
 
 footer{max-width:760px; margin:0 auto; padding:2.5rem 20px 4rem; color:var(--muted); font-size:.86rem}
 
-/* ---- progressive enhancement: reveal ONLY hidden when JS is on ---- */
-.js-anim .reveal{opacity:0; transform:translateY(26px); transition:opacity .7s ease, transform .7s ease}
-.js-anim .reveal.shown{opacity:1; transform:none}
+/* Report wrappers stay visible; motion is local to individual blocks. */
+.reveal{opacity:1;transform:none}
 
 @media (max-width:820px){
   body{font-size:16px}
@@ -581,6 +576,8 @@ footer{max-width:760px; margin:0 auto; padding:2.5rem 20px 4rem; color:var(--mut
   .depth.section-enter::after{display:none}
 }
 """
+
+CSS += THEME_CSS
 
 JS = """
 (function(){
@@ -716,11 +713,7 @@ JS = """
   var dots=[].slice.call(document.querySelectorAll('.gauge a'));
   var secs=dots.map(function(a){return document.querySelector(a.getAttribute('href'));});
   var ticking=false, activeSection=-1, lastScroll=window.scrollY;
-  secs.forEach(function(section){
-    section.addEventListener('animationend',function(e){
-      if(e.animationName==='depth-enter') section.classList.remove('section-enter');
-    });
-  });
+
   function tick(){
     ticking=false;
     var vh=window.innerHeight;
@@ -734,11 +727,9 @@ JS = """
     // A short last section must still become active at the document bottom.
     if(window.scrollY>0 && window.scrollY+vh>=document.documentElement.scrollHeight-2) active=secs.length-1;
     if(active!==activeSection){
-      secs.forEach(function(section){section.classList.remove('section-enter');});
       if(active>=0){
         var section=secs[active];
         section.dataset.direction=window.scrollY<lastScroll?'up':'down';
-        if(!reduce) section.classList.add('section-enter');
       }
       activeSection=active;
     }
@@ -748,6 +739,7 @@ JS = """
       else { dots[m].classList.remove('on'); dots[m].removeAttribute('aria-current'); }
     }
     pagers.forEach(function(p){p.sync();});
+    sceneMotion.update(active);
   }
   function onScroll(){ if(ticking) return; ticking=true; requestAnimationFrame(tick); }
   window.addEventListener('scroll', onScroll, {passive:true});
@@ -756,8 +748,8 @@ JS = """
   function motionChanged(){
     reduce=!!(mq&&mq.matches);
     root.classList.toggle('js-anim',!reduce);
-    secs.forEach(function(section){section.classList.remove('section-enter');});
     pagers.forEach(function(p){p.setReduced(reduce);});
+    sceneMotion.measure();
     onScroll();
   }
   if(mq){
@@ -768,6 +760,9 @@ JS = """
   onScroll();
 })();
 """
+
+
+JS = JS.replace("  function tick(){", MOTION_JS + "\n  function tick(){")
 
 
 def _ship(x, name, paradigm):
@@ -1181,45 +1176,7 @@ def _gauge(d):
 
 
 def _hero(d):
-    # Layered sea waves with the Plimsoll mark riding the waterline.
-    sky = (
-        '<svg class="sky" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMax slice" '
-        'aria-hidden="true">'
-        '<defs><linearGradient id="sh" x1="0" y1="0" x2="0" y2="1">'
-        '<stop offset="0" stop-color="#1b8f92"/><stop offset="1" stop-color="#0b5c62"/>'
-        '</linearGradient></defs>'
-        '<rect width="1440" height="900" fill="url(#sh)"/>'
-        # far swell
-        '<path class="hw hw3" fill="#0a4e58" opacity="0.6" '
-        'd="M0,560 C360,510 540,610 720,560 C900,510 1080,610 1440,560 L2880,560 L2880,900 L0,900 Z"/>'
-        # mid swell
-        '<path class="hw hw2" fill="#0a4650" opacity="0.85" '
-        'd="M0,640 C300,590 620,700 900,640 C1140,590 1260,690 1440,640 L2880,640 L2880,900 L0,900 Z"/>'
-        # near swell (waterline for the mark ~ y=690)
-        '<path class="hw hw1" fill="#083f49" '
-        'd="M0,700 C260,660 520,740 780,700 C1020,665 1220,735 1440,700 L2880,700 L2880,900 L0,900 Z"/>'
-        '</svg>'
-    )
-    buoy = (
-        '<svg class="buoy" viewBox="0 0 100 100" aria-hidden="true" fill="none" '
-        'stroke="currentColor" stroke-width="6">'
-        '<line x1="4" y1="50" x2="96" y2="50"/><circle cx="50" cy="50" r="26"/></svg>'
-    )
-    return f"""
-<section id="hero">
-  {sky}
-  {buoy}
-  <div class="inner">
-    <div class="brand">
-      {LOGO}
-      <h1>Plimsmark</h1>
-    </div>
-    <p class="tag">Do Sui mainnet RPC providers disagree on event data?
-      A dated, network-tested spike — then a descent through what it found.</p>
-    <p class="scrollcue"><span>▼ scroll to descend</span></p>
-  </div>
-</section>
-"""
+    return '<section id="hero">' + scene_intro(0, DATE, d["verdict"]) + '</section>'
 
 
 def render(d: dict) -> str:
@@ -1241,7 +1198,7 @@ def render(d: dict) -> str:
 
     sec1 = f"""
 <section id="sec-1" class="depth d1">
-  {wave('var(--sea1)')}
+  {scene_intro(1, DATE)}
   <div class="inner reveal">
     <h2><span class="n">1</span> The question, and the verdict</h2>
     <p class="lede"><strong>Question tested:</strong> do Sui mainnet RPC providers return
@@ -1276,7 +1233,7 @@ def render(d: dict) -> str:
 
     sec2 = f"""
 <section id="sec-2" class="depth d2">
-  {wave('var(--sea2)')}
+  {scene_intro(2, DATE)}
   <div class="inner reveal">
     <h2><span class="n">2</span> Findings Sui developers can use today</h2>
 
@@ -1335,7 +1292,7 @@ def render(d: dict) -> str:
 
     sec3 = f"""
 <section id="sec-3" class="depth d3">
-  {wave('var(--sea3)')}
+  {scene_intro(3, DATE)}
   <div class="inner reveal">
     <h2><span class="n">3</span> Method</h2>
     {_fig_pipeline(len(cfg['providers']), d['verdict'])}
@@ -1359,15 +1316,15 @@ def render(d: dict) -> str:
       <tr><th>window</th><th>checkpoints</th><th>start (UTC)</th></tr>
       {win_rows}
     </table></div>
-    <p class="kv">Q1b type <code>{e(q1b_type)}</code>. Q2 type
-    <code>{e(q2_type)}</code>.</p>
+    <dl class="type-details"><dt>Q1b type</dt><dd><code>{e(q1b_type)}</code></dd>
+    <dt>Q2 type</dt><dd><code>{e(q2_type)}</code></dd></dl>
   </div>
 </section>
 """
 
     sec4 = f"""
-<section id="sec-4" class="depth d4">
-  {wave('var(--sea4)')}
+<section id="sec-4" class="depth d4 light-chapter">
+  {scene_intro(4, DATE)}
   <div class="inner reveal">
     <h2><span class="n">4</span> Limits</h2>
     {_fig_loadline([
@@ -1383,8 +1340,8 @@ def render(d: dict) -> str:
 """
 
     sec5 = f"""
-<section id="sec-5" class="depth d5">
-  {wave('var(--sea5)')}
+<section id="sec-5" class="depth d5 light-chapter">
+  {scene_intro(5, DATE)}
   <div class="inner reveal">
     <h2><span class="n">5</span> Evidence</h2>
     <p>Every claim above is backed by a committed file — the ship's cargo manifest. Raw
@@ -1398,7 +1355,7 @@ def render(d: dict) -> str:
 
     sec6 = f"""
 <section id="sec-6" class="depth d6">
-  {wave('var(--sea6)')}
+  {scene_intro(6, DATE)}
   <div class="inner reveal">
     <h2><span class="n">6</span> Correction</h2>
     <p>A premise spike corrects its own record. An earlier reading is struck and amended,
@@ -1421,6 +1378,8 @@ def render(d: dict) -> str:
 <style>{CSS}</style>
 </head>
 <body>
+{mesh_definitions()}
+{site_header(LOGO, DATE)}
 {_gauge(d)}
 <main>
 {body}

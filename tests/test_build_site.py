@@ -96,18 +96,28 @@ def test_depth_gauge_links_to_every_section():
         assert f'href="#sec-{n}"' in html, f"gauge missing link to sec-{n}"
 
 
-def test_reveal_is_hidden_only_under_js_class():
-    """Progressive enhancement: reveal-hiding CSS must be scoped to a JS-only
-    class on the root element, so content is fully visible when JS is off."""
+def test_scroll_motion_never_hides_a_whole_report_section():
+    """Animate individual blocks, not a tall wrapper that can stay invisible."""
     html = render(load_data(ROOT))
-    # the hiding rule must be qualified by the js flag class, never global
-    assert re.search(r"\.js-anim[^{]*\.reveal\b[^{]*\{[^}]*opacity\s*:\s*0", html), (
-        "reveal elements must only be hidden under the .js-anim root class"
-    )
-    # a bare `.reveal{opacity:0}` (unqualified) would break the no-JS view
-    assert not re.search(r"(^|[},])\s*\.reveal\s*\{[^}]*opacity\s*:\s*0", html), (
-        "found an unqualified .reveal opacity:0 rule (breaks no-JS view)"
-    )
+    assert ".js-anim .motion-item" in html
+    assert not re.search(r"\.reveal\s*\{[^}]*opacity\s*:\s*0", html)
+
+
+def test_every_chapter_has_a_scroll_scene_without_replacing_the_evidence():
+    html = render(load_data(ROOT))
+    for sid in ("hero", *(f"sec-{i}" for i in range(1, 7))):
+        section = _section(html, sid)
+        assert 'class="scene-intro"' in section, sid
+        assert 'class="scene-stage"' in section, sid
+        assert 'class="layer-art"' in section, sid
+        assert 'aria-hidden="true"' in section, sid
+    assert 'id="mesh-surface"' in html
+    assert "Visual metaphor" in html
+    assert "not a measurement" in html
+    assert 'class="site-header"' in html
+    assert 'id="sec-4" class="depth d4 light-chapter"' in html
+    assert 'id="sec-5" class="depth d5 light-chapter"' in html
+    assert "Archived evidence" in html and "Recorded replay" in html
 
 
 def test_key_numbers_present_as_static_text_not_only_js():
@@ -282,7 +292,9 @@ def test_section3_pipeline_stages_in_order():
     sec3 = _section(render(load_data(ROOT)), "sec-3")
     assert 'class="pipeline"' in sec3, "no pipeline visual"
     stages = ["providers", "pagination", "identity match", "self-consistency", "verdict"]
-    positions = [sec3.lower().find(s) for s in stages]
+    pipeline = re.search(r'<figure class="pipeline".*?</figure>', sec3, re.DOTALL)
+    assert pipeline
+    positions = [pipeline.group(0).lower().find(s) for s in stages]
     assert all(p >= 0 for p in positions), f"missing pipeline stage: {stages}"
     assert positions == sorted(positions), "pipeline stages out of order"
 

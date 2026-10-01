@@ -4,7 +4,8 @@ Run after build_site.py:
   uv run --no-project --with playwright --python .venv/bin/python \
     python scripts/check_site_browser.py
 
-Uses the locally installed Chrome. No browser download, server, or live RPC calls.
+Uses locally installed Chrome by default; --browser webkit uses Playwright's
+installed WebKit build. This script never downloads a browser or calls live RPCs.
 """
 
 from __future__ import annotations
@@ -129,57 +130,87 @@ def check_replay(page):
 
 
 def check_transitions(page):
-    # Start at the top of a genuinely fresh document, before any section visits.
     page.goto("about:blank")
     page.goto((ROOT / "docs" / "index.html").as_uri() + "?qa=fresh-scroll")
-    page.evaluate("window.scrollTo({top:0,behavior:'instant'})")
-    page.wait_for_timeout(60)
-    assert page.locator(".depth > .inner:not(.shown)").count() > 0
+    page.wait_for_selector(".scene-intro", timeout=2000)
     page.evaluate("window.scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'})")
-    page.wait_for_timeout(1000)
-    assert page.locator(".depth > .inner").evaluate_all(
+    page.wait_for_timeout(200)
+    assert page.locator(".depth > .inner,.motion-item").evaluate_all(
         "els => els.every(e => getComputedStyle(e).opacity === '1')"
-    ), "first-visit fast scroll stranded a hidden section"
+    ), "first-visit fast scroll stranded hidden report content"
     assert page.locator(".gauge a[aria-current]").get_attribute("href") == "#sec-6"
-    page.evaluate("""() => {
-      window.__sectionEntries=[];
-      document.addEventListener('animationstart', e => {
-        if(e.animationName === 'depth-enter') window.__sectionEntries.push({
-          section:e.target.closest('.depth').id,
-          direction:e.target.closest('.depth').dataset.direction
-        });
-      });
-      window.scrollTo({top:0, behavior:'instant'});
-    }""")
-    page.wait_for_timeout(60)
-    visited = []
-    for number in [*range(1, 7), *range(5, 0, -1)]:
-        sid = f"sec-{number}"
-        before = page.evaluate("window.__sectionEntries.length")
+    page.evaluate("window.scrollTo({top:0,behavior:'instant'})")
+    page.wait_for_timeout(100)
+
+    def sample_scene(sid, progress):
+        scene = page.locator(f"#{sid} .scene-intro")
+        scene.evaluate("""(e,p) => window.scrollTo({
+          top:scrollY+e.getBoundingClientRect().top+(e.offsetHeight-innerHeight)*p,
+          behavior:'instant'
+        })""", progress)
+        page.wait_for_function("""({sid,progress}) => {
+          const e=document.querySelector('#'+sid+' .scene-intro');
+          return Math.abs(Number(getComputedStyle(e).getPropertyValue('--scene-progress'))-progress)<.01;
+        }""", arg={"sid":sid,"progress":progress}, timeout=3000)
+        return scene.evaluate("""e => ({
+          progress:Number(getComputedStyle(e).getPropertyValue('--scene-progress')),
+          spin:getComputedStyle(e.querySelector('.layer-stack')).getPropertyValue('--scene-spin'),
+          transform:getComputedStyle(e.querySelector('.layer-stack')).transform,
+          plane:getComputedStyle(e.querySelector('.data-plane')).transform,
+          stageTop:e.querySelector('.scene-stage').getBoundingClientRect().top
+        })""")
+
+    scenes = []
+    for sid in ["hero", *(f"sec-{n}" for n in range(1, 7))]:
+        start = sample_scene(sid, .12)
+        middle = sample_scene(sid, .52)
+        end = sample_scene(sid, .88)
+        back = sample_scene(sid, .12)
+        for requested, sample in ((.12,start),(.52,middle),(.88,end),(.12,back)):
+            assert abs(sample["progress"]-requested) < .01, (sid,requested,sample)
+            assert abs(sample["stageTop"]) < 2, (sid,"scene stage is not pinned",sample)
+        assert len({s["spin"] for s in (start,middle,end)}) == 3, (sid,"spin is not scroll-driven")
+        assert len({s["transform"] for s in (start,middle,end)}) == 3, sid
+        # Separation opens then closes; symmetric endpoints may intentionally match.
+        assert middle["plane"] != start["plane"], (sid,"layers do not separate")
+        assert start["transform"] == back["transform"], (sid,"scroll reversal does not restore scene")
+        page.wait_for_timeout(350)
+        assert page.locator(f"#{sid} .layer-stack").evaluate("e=>getComputedStyle(e).transform") == back["transform"], (
+            sid,"scene keeps playing while scroll is stopped"
+        )
+        scenes.append(sid)
+
+    # Real wheel input must change the scene too, not just scripted jump hooks.
+    sample_scene("sec-2", .1)
+    before = page.locator("#sec-2 .layer-stack").evaluate("e=>getComputedStyle(e).transform")
+    page.mouse.move(250,350)
+    page.mouse.wheel(0,120)
+    page.wait_for_timeout(150)
+    after = page.locator("#sec-2 .layer-stack").evaluate("e=>getComputedStyle(e).transform")
+    assert before != after, "wheel scroll did not animate the layers"
+
+    visited=[]
+    for n in [*range(1,7),*range(5,0,-1)]:
+        sid=f"sec-{n}"
         page.locator(f'.gauge a[href="#{sid}"]').click()
         page.wait_for_function(
             "sid => document.querySelector('.gauge a[aria-current]')?.hash === '#'+sid", arg=sid
         )
-        page.wait_for_function(
-            "p => window.__sectionEntries.slice(p.before).some(e => e.section === p.sid)",
-            arg={"before": before, "sid": sid}, timeout=2500,
-        )
         page.wait_for_timeout(900)
-        content = page.locator(f"#{sid} > .inner")
-        assert content.evaluate("e => getComputedStyle(e).opacity") == "1", sid
-        assert page.locator(f"#{sid}").get_attribute("data-direction") == (
-            "up" if len(visited) >= 6 else "down"
-        )
+        assert page.locator(f"#{sid} > .inner").evaluate("e=>getComputedStyle(e).opacity") == "1"
         visited.append(sid)
-    # Momentum-style jumps must not strand any section at opacity zero.
-    page.evaluate("window.scrollTo({top:document.documentElement.scrollHeight,behavior:'instant'})")
-    page.wait_for_timeout(1000)
-    assert page.locator(".depth > .inner").evaluate_all(
-        "els => els.every(e => getComputedStyle(e).opacity === '1')"
-    )
-    assert page.locator(".gauge a[aria-current]").get_attribute("href") == "#sec-6"
-    return {"sections_down": visited[:6], "sections_up": visited[6:],
-            "first_visit_fast_scroll": "passed", "fast_scroll": "passed"}
+
+    block=page.locator("#sec-2 > .inner > h3").first
+    block.evaluate("e=>{let top=0;for(let p=e;p;p=p.offsetParent)top+=p.offsetTop;window.scrollTo({top:top-innerHeight*.9,behavior:'instant'});}")
+    page.wait_for_timeout(100)
+    entry=block.evaluate("e=>({opacity:getComputedStyle(e).opacity,transform:getComputedStyle(e).transform})")
+    page.mouse.wheel(0,230)
+    page.wait_for_timeout(150)
+    settled=block.evaluate("e=>({opacity:getComputedStyle(e).opacity,transform:getComputedStyle(e).transform})")
+    assert float(settled["opacity"])>float(entry["opacity"]), "content does not reveal with the scroll"
+    assert settled["transform"] != entry["transform"]
+    return {"scenes_scrubbed_and_reversed":scenes,"sections_down":visited[:6],"sections_up":visited[6:],
+            "first_visit_fast_scroll":"passed","real_wheel_motion":"passed","per_block_reveal":"passed"}
 
 
 def assert_static_report(page):
@@ -226,6 +257,8 @@ def check_mobile(page):
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "horizontal overflow"
     replay = check_replay(page)
     transitions = check_transitions(page)
+    page.locator('.pg-controls').scroll_into_view_if_needed()
+    page.wait_for_timeout(100)
     targets = page.locator(".gauge a,.pg-controls button,.pg-slider").evaluate_all(
         "els => els.map(e => ({label:e.getAttribute('aria-label')||e.textContent, "
         "width:e.getBoundingClientRect().width,height:e.getBoundingClientRect().height}))"
@@ -237,14 +270,162 @@ def check_mobile(page):
     return {"width": 375, "replay": replay, "transitions": transitions, "touch_targets": "passed"}
 
 
+def check_responsive_scenes(page):
+    checked=[]
+    for width,height in ((375,667),(768,1024),(1280,720)):
+        page.set_viewport_size({"width":width,"height":height})
+        page.goto("about:blank")
+        page.goto((ROOT / "docs" / "index.html").as_uri())
+        for sid in ("hero", *(f"sec-{n}" for n in range(1,7))):
+            page.locator('#'+sid).evaluate(
+                "e=>window.scrollTo({top:scrollY+e.getBoundingClientRect().top,behavior:'instant'})"
+            )
+            page.wait_for_timeout(100)
+            geometry=page.locator('#'+sid+' .scene-stage').evaluate("""e=>{
+              const copy=e.querySelector('.scene-copy');
+              return {docWidth:document.documentElement.scrollWidth, viewport:innerWidth,
+                copyBottom:copy.getBoundingClientRect().bottom,
+                footerTop:e.querySelector('.scene-bottom').getBoundingClientRect().top,
+                copyScroll:copy.scrollWidth,copyWidth:copy.clientWidth};
+            }""")
+            assert geometry['docWidth']<=width,(sid,geometry)
+            assert geometry['copyScroll']<=geometry['copyWidth']+1,(sid,geometry)
+            assert geometry['copyBottom']<geometry['footerTop']-8,(sid,geometry)
+            checked.append({"width":width,"height":height,"section":sid})
+    return {"views_checked":len(checked),"widths":[375,768,1280],"issues":[]}
+
+
+def check_review_regressions(page):
+    """Exercise the breakpoints and fallback states found by independent review."""
+    failures, checks = [], []
+    for width in (821, 900, 1024, 1100, 1280, 1440):
+        page.set_viewport_size({"width": width, "height": 900})
+        page.goto((ROOT / "docs" / "index.html").as_uri())
+        page.locator('#sec-1 .lede').evaluate("""e => {
+          const nav=document.querySelector('.gauge a');
+          const n=nav.getBoundingClientRect();
+          let top=0;for(let p=e;p;p=p.offsetParent)top+=p.offsetTop;
+          scrollTo({top:top-n.top,behavior:'instant'});
+        }""")
+        page.wait_for_timeout(150)
+        geometry=page.evaluate("""() => {
+          const text=document.querySelector('#sec-1 .lede strong').getBoundingClientRect();
+          const links=[...document.querySelectorAll('.gauge a')].map(e=>e.getBoundingClientRect());
+          return {textLeft:text.left,navRight:Math.max(...links.map(r=>r.right)),
+            overlap:links.some(r=>r.left<text.right && r.right>text.left && r.top<text.bottom && r.bottom>text.top)};
+        }""")
+        checks.append({"navigation_width":width, **geometry})
+        if geometry['overlap']:
+            failures.append({"issue":"navigation overlays report text","width":width,**geometry})
+        for sid in ('sec-1','sec-2','sec-4','sec-6'):
+            page.locator('#'+sid).evaluate("e=>scrollTo({top:scrollY+e.getBoundingClientRect().top+150,behavior:'instant'})")
+            page.wait_for_timeout(100)
+            intro=page.locator('#'+sid+' .scene-copy').evaluate("""e=>{
+              const copy=e.getBoundingClientRect();
+              const links=[...document.querySelectorAll('.gauge a')].map(a=>a.getBoundingClientRect());
+              return {copyLeft:copy.left,navRight:Math.max(...links.map(r=>r.right)),
+                overlap:links.some(r=>r.left<copy.right && r.right>copy.left && r.top<copy.bottom && r.bottom>copy.top)};
+            }""")
+            if intro['overlap']:
+                failures.append({"issue":"navigation overlays scene copy","width":width,"section":sid,**intro})
+            annotation=page.locator('#'+sid+' .art-coordinate')
+            if annotation.is_visible():
+                bounds=annotation.bounding_box()
+                assert bounds
+                if bounds['x']<0 or bounds['x']+bounds['width']>width:
+                    failures.append({"issue":"decorative caption clipped","width":width,"section":sid})
+
+    for width,height in ((375,667),(812,375),(1280,720)):
+        page.set_viewport_size({"width":width,"height":height})
+        page.goto("about:blank")
+        page.goto((ROOT / "docs" / "index.html").as_uri())
+        page.wait_for_timeout(100)
+        for sid in ('hero','sec-2','sec-4','sec-6'):
+            stage=page.locator('#'+sid+' .scene-stage')
+            initial=stage.evaluate("""e=>({height:e.offsetHeight,position:getComputedStyle(e).position,
+              introHeight:e.parentElement.offsetHeight})""")
+            if initial['height']>height+1 and initial['position']=='sticky':
+                failures.append({"issue":"oversized scene is still sticky","viewport":[width,height],"section":sid,**initial})
+                continue
+            if initial['position']!='sticky':
+                if initial['introHeight']>initial['height']+2:
+                    failures.append({"issue":"non-sticky fallback retains pin spacer","section":sid,**initial})
+                checks.append({"viewport":[width,height],"section":sid,"unpinned":True})
+                continue
+            for progress in (.12,.52,.88):
+                page.locator('#'+sid+' .scene-intro').evaluate("""(e,p)=>{
+                  const stage=e.querySelector('.scene-stage');
+                  scrollTo({top:scrollY+e.getBoundingClientRect().top+(e.clientHeight-stage.offsetHeight)*p,behavior:'instant'});
+                }""",progress)
+                page.wait_for_timeout(100)
+                actual=stage.evaluate("""e=>({top:e.getBoundingClientRect().top,
+                  progress:Number(getComputedStyle(e.parentElement).getPropertyValue('--scene-progress')),
+                  eyebrowTop:e.querySelector('.scene-eyebrow').getBoundingClientRect().top,
+                  headerBottom:document.querySelector('.site-header').getBoundingClientRect().bottom})""")
+                if abs(actual['top'])>2 or abs(actual['progress']-progress)>.015:
+                    failures.append({"issue":"sticky range mismatch","viewport":[width,height],"section":sid,"wanted":progress,**actual})
+                if actual['eyebrowTop']<actual['headerBottom']+4:
+                    failures.append({"issue":"parallax text hidden under header","viewport":[width,height],"section":sid,**actual})
+            checks.append({"viewport":[width,height],"section":sid,"pinned_samples":3})
+
+    page.set_viewport_size({"width":1440,"height":1000})
+    page.goto((ROOT / "docs" / "index.html").as_uri())
+    page.wait_for_timeout(100)
+    if page.locator('#hero .buoy').evaluate("e=>e.getAnimations().length"):
+        failures.append({"issue":"hero buoy keeps animating at rest"})
+
+    # Without JS the rail must own a contrasting background on either palette.
+    browser=page.context.browser
+    assert browser
+    fallback=browser.new_context(java_script_enabled=False,viewport={"width":1440,"height":1000})
+    fallback.route('http://**/*',lambda route:route.abort())
+    fallback.route('https://**/*',lambda route:route.abort())
+    static=fallback.new_page()
+    static.goto((ROOT / 'docs' / 'index.html').as_uri())
+
+    def rgba(value):
+        import re
+        parts=[float(n) for n in re.findall(r'[\d.]+',value)]
+        return parts[:3]+[parts[3] if len(parts)>3 else 1]
+
+    def composite(front,back):
+        return [front[i]*front[3]+back[i]*(1-front[3]) for i in range(3)]+[1]
+
+    def luminance(color):
+        linear=[v/255/12.92 if v/255<=.04045 else ((v/255+.055)/1.055)**2.4 for v in color[:3]]
+        return sum(a*b for a,b in zip(linear,(.2126,.7152,.0722)))
+
+    for sid in ('sec-4','sec-5'):
+        static.locator('#'+sid).evaluate("e=>scrollTo({top:scrollY+e.getBoundingClientRect().top,behavior:'instant'})")
+        link=static.locator(f'.gauge a[href="#{sid}"]')
+        for interaction in ('hover','focus'):
+            getattr(link,interaction)()
+            static.wait_for_timeout(300)
+            colors=link.evaluate("""e=>({foreground:getComputedStyle(e).color,
+              nav:getComputedStyle(e.closest('.gauge')).backgroundColor,
+              section:getComputedStyle(document.querySelector(e.getAttribute('href'))).backgroundColor})""")
+            background=composite(rgba(colors['nav']),rgba(colors['section']))
+            foreground=composite(rgba(colors['foreground']),background)
+            values=sorted((luminance(foreground),luminance(background)))
+            ratio=(values[1]+.05)/(values[0]+.05)
+            checks.append({"no_js":sid,"state":interaction,"contrast":round(ratio,2)})
+            if ratio<4.5:
+                failures.append({"issue":"no-JS navigation contrast","section":sid,"state":interaction,"ratio":ratio,**colors})
+    fallback.close()
+    assert not failures,json.dumps(failures,indent=2)
+    return {"checks":checks,"issues":[]}
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--only", choices=("replay", "transitions", "all"), default="all")
+    parser.add_argument("--only", choices=("replay", "transitions", "review", "all"), default="all")
+    parser.add_argument("--browser", choices=("chromium", "webkit"), default="chromium")
     parser.add_argument("--output", type=Path, help="Optional JSON result file")
     parser.add_argument("--screenshots", type=Path, help="Optional directory for visual QA")
     args = parser.parse_args()
     with sync_playwright() as playwright:
-        browser = playwright.chromium.launch(executable_path=str(CHROME), headless=True)
+        browser = (playwright.chromium.launch(executable_path=str(CHROME), headless=True)
+                   if args.browser == "chromium" else playwright.webkit.launch(headless=True))
         context = browser.new_context(viewport={"width": 1440, "height": 1000})
         errors, requests = [], []
         context.on("page", lambda p: p.on("pageerror", lambda error: errors.append(str(error))))
@@ -253,11 +434,13 @@ def main():
         context.route("http://**/*", lambda route: route.abort())
         page = context.new_page()
         page.goto((ROOT / "docs" / "index.html").as_uri())
-        result: dict = {}
+        result: dict = {"browser": args.browser}
         if args.only in ("replay", "all"):
             result["replay"] = check_replay(page)
         if args.only in ("transitions", "all"):
             result["transitions"] = check_transitions(page)
+        if args.only in ("review", "all"):
+            result['review_regressions']=check_review_regressions(page)
         if args.only == "all":
             result["motion_preferences"] = check_motion_preferences(page)
             result["mobile"] = check_mobile(page)
@@ -283,9 +466,13 @@ def main():
                 static_page = fallback.new_page()
                 static_page.goto((ROOT / "docs" / "index.html").as_uri())
                 assert_static_report(static_page)
+                assert static_page.locator('.scene-stage').evaluate_all(
+                    "els=>els.every(e=>getComputedStyle(e).position!=='sticky')"
+                ), "fallback still pins scenes"
                 assert static_page.evaluate("document.documentElement.scrollWidth <= innerWidth")
                 result[mode] = "passed"
                 fallback.close()
+            result['responsive_scenes']=check_responsive_scenes(page)
         assert not errors, errors
         assert all(url.startswith("file:") for url in requests), requests
         result.update({"console_errors": errors, "external_requests": []})

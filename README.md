@@ -94,11 +94,15 @@ reference/      earlier spike's dated observations — RE-VERIFY, do not import
 
 A static, self-contained report of the spike lives in `docs/` and is published at
 **https://plimsmark.com** via GitHub Pages. It is a single HTML file — inline CSS,
-inline SVG, one small inline vanilla-JS block, and **no external fonts, scripts,
-images, or network requests** — rendered as a scrollytelling "descent": six
-sections shade from sea teal at the surface to abyssal navy in the deep, separated
-by animated wave dividers, with a fixed depth gauge (a side rail on desktop, a
-bottom bar on mobile) tracking scroll. The Plimsoll load-line mark is the logo.
+inline SVG, inline vanilla JavaScript, and **no external fonts, scripts, images,
+or network requests**. Its industrial-editorial visual system uses navy/cyan,
+large left-aligned chapter titles, and original generated particle/wireframe
+layers. The Limits and Evidence chapters shift to a light paper palette.
+A fixed depth gauge (side rail on desktop, bottom bar on mobile) tracks all six
+sections; the Plimsoll load-line mark remains the logo. The supplied reference
+video informs composition and motion only: no third-party video, logo, image,
+or font files are embedded. Decorative meshes are labelled as visual metaphors,
+not measurements. The shell lives in `scripts/report_theme.py`.
 
 Every number, date, and claim is **read from the dated fixtures** by
 `scripts/build_site.py` (tested network-free in `tests/test_build_site.py`), never
@@ -114,9 +118,16 @@ and timestamp read from its fixture, not a live website error. The pagination
 chart replays the recorded pages: the step trace, event counts, and `hasNextPage`
 state advance together. Play/pause, restart, and a keyboard-accessible page
 slider are available with JavaScript; the replay pauses off-screen. Playback
-speed is illustrative, **not live data or recorded request timing**. Sections
-1–6 use directional fade/slide transitions on entry and re-entry. Reduced-motion
-preferences disable playback/transitions without disabling section navigation.
+speed is illustrative, **not live data or recorded request timing**. The hero and
+six chapter openings use short sticky scenes: scroll position controls mesh
+rotation, layer separation, scale, and text parallax in both directions. Each
+report block reveals as it enters the viewport; whole sections are never hidden.
+There is no wheel/touch interception or scroll lock. Pinning uses the actual
+scene height; scenes taller than the viewport scroll normally instead. Copy
+parallax stops before the fixed header, and a desktop gutter protects text from
+the section rail. Reduced-motion and no-JS modes remove pinning and motion while
+preserving the full report and navigation, with an independent high-contrast
+navigation background when JavaScript is unavailable.
 
 Regenerate it with:
 
@@ -132,8 +143,10 @@ uv run --no-project --with playwright --python .venv/bin/python python scripts/c
 ```
 
 The browser check loads the local HTML and blocks HTTP(S). It covers every replay
-page, pause/restart/seek and keyboard controls, all six section transitions,
+page, pause/restart/seek and keyboard controls, the hero and all six scroll scenes
+at multiple progress points and in reverse, real wheel input, per-block reveals,
 fast scrolling, a 375 px viewport, reduced motion (including changes during
-playback), and JavaScript disabled. The first `uv` run may download Playwright;
-the checks themselves never call an RPC provider.
+playback), and JavaScript disabled. Pass `--browser webkit` for an installed
+Playwright WebKit build (Safari-engine coverage). The first `uv` run may download
+Playwright; the checks themselves never call an RPC provider.
 
