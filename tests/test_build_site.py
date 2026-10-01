@@ -221,6 +221,20 @@ def test_finding_c_sonar_scan_budget_trap():
     assert 'class="sonar"' in sec2, "no sonar sweep visual"
     for token in ("0 nodes", "hasNextPage", "not empty"):
         assert token in sec2, f"sonar missing {token!r}"
+    # The paragraph itself must distinguish documented behaviour from observations;
+    # the chart caption's substitute disclosure is not enough.
+    paragraph = re.search(r"scan-budget trap:.*?</h3>\s*<p>(.*?)</p>", sec2,
+                          flags=re.DOTALL).group(1)
+    text = " ".join(re.sub(r"<[^>]+>", "", paragraph).split())
+    for claim in (
+        "Documented GraphQL behaviour",
+        "The client code in this spike is built to handle this behaviour",
+        "no such page occurred in the recorded runs",
+        "Keep paginating while the cursor advances",
+        "treat a stalled cursor (no advance) as an incomplete, unknown result",
+        "never as an empty set",
+    ):
+        assert claim in text, f"scan-budget paragraph missing {claim!r}"
 
 
 def test_finding_d_timeline_shows_ms_drift_from_fixtures():

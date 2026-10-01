@@ -1111,9 +1111,11 @@ def render(d: dict) -> str:
     identical across all four providers.</p>
 
     <h3>GraphQL's scan-budget trap: 0 nodes + <code>hasNextPage: true</code> does not mean empty</h3>
-    <p>A forward GraphQL <code>events</code> scan can return a page with zero nodes while
-    <code>pageInfo.hasNextPage</code> is <code>true</code>: the per-request scan budget was
-    exhausted before a match, not the end of data. Keep paginating while the cursor advances;
+    <p>Documented GraphQL behaviour: a forward <code>events</code> scan can return a page
+    with zero nodes while <code>pageInfo.hasNextPage</code> is <code>true</code> when the
+    per-request scan budget is exhausted before a match, rather than reaching the end of data.
+    The client code in this spike is built to handle this behaviour; no such page occurred in
+    the recorded runs. Keep paginating while the cursor advances;
     treat a stalled cursor (no advance) as an incomplete, unknown result — never as an empty set.</p>
     {_fig_sonar(d['q1b_pages'], q1b_type)}
 
