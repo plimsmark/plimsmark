@@ -158,9 +158,30 @@ def _section(html, sid):
 def test_hero_has_plimsoll_mark_on_the_waterline():
     html = render(load_data(ROOT))
     hero = _section_or_hero(html, "hero")
-    assert 'class="buoy"' in hero, "hero missing waterline Plimsoll buoy mark"
-    # the buoy is a Plimsoll mark: circle + bisecting line inside the hero SVG scene
-    assert "<circle" in hero and "<line" in hero
+    assert 'data-artwork="emblem"' in hero
+    assert 'href="#plimsoll-emblem"' in hero
+    assert 'class="buoy"' not in hero, "do not duplicate a floating mark over the main logo"
+
+
+def test_chapter_artworks_vary_and_share_the_supplied_plimsoll_geometry():
+    html = render(load_data(ROOT))
+    expected = ("emblem", "agreement", "layers", "flow", "boundary", "archive", "resolved")
+    for sid, artwork in zip(("hero", *(f"sec-{n}" for n in range(1, 7))), expected):
+        section = _section(html, sid)
+        assert f'data-artwork="{artwork}"' in section
+        assert 'href="#plimsoll-emblem"' in section
+        assert 'class="art-coordinate"' not in section, "remove the cropped decorative label"
+        assert 'class="art-axis' not in section, "avoid the repeated cross-line clutter"
+    assert html.count('class="data-plane ') == 2, "reserve the mesh for one restrained two-layer composition"
+    symbol = re.search(r'<symbol id="plimsoll-emblem".*?</symbol>', html, re.DOTALL)
+    assert symbol
+    assert '<circle cx="50" cy="50" r="26"' in symbol.group(0)
+    assert '<line x1="8" y1="50" x2="92" y2="50"' in symbol.group(0)
+    correction = _section(html, "sec-6")
+    assert 'class="revision-before art-faint"' in correction
+    assert 'class="revision-after"' in correction
+    assert 'class="revision-link"' in correction
+    assert 'class="resolved-trace' not in correction, "correction must not repeat the hero halo"
 
 
 def _section_or_hero(html, sid):
@@ -173,7 +194,7 @@ def test_section1_shows_four_ships_one_per_provider():
     d = load_data(ROOT)
     html = render(d)
     sec1 = _section(html, "sec-1")
-    ships = re.findall(r'class="ship\b', sec1)
+    ships = re.findall(r'<g class="ship"', sec1)
     assert len(ships) == 4, f"expected 4 ships, found {len(ships)}"
     # each ship is labelled with a provider id read from the fixtures
     for provider in d["cfg"]["providers"]:
@@ -185,6 +206,13 @@ def test_section1_ships_share_one_waterline():
     html = render(load_data(ROOT))
     sec1 = _section(html, "sec-1")
     assert 'class="waterline"' in sec1 or "waterline" in sec1
+
+
+def test_ship_animation_is_nested_inside_fixed_provider_positions():
+    sec1 = _section(render(load_data(ROOT)), "sec-1")
+    assert len(re.findall(r'<g class="ship" transform="translate\([0-9]+,0\)">\s*<g class="ship-motion">', sec1)) == 4
+    assert '.js-anim .ships .ship-motion{' in render(load_data(ROOT))
+    assert '.js-anim .ships .ship{animation:' not in render(load_data(ROOT))
 
 
 def test_section1_has_refuted_ink_stamp():

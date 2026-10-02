@@ -96,10 +96,13 @@ A static, self-contained report of the spike lives in `docs/` and is published a
 **https://plimsmark.com** via GitHub Pages. It is a single HTML file — inline CSS,
 inline SVG, inline vanilla JavaScript, and **no external fonts, scripts, images,
 or network requests**. Its industrial-editorial visual system uses navy/cyan,
-large left-aligned chapter titles, and original generated particle/wireframe
-layers. The Limits and Evidence chapters shift to a light paper palette.
-A fixed depth gauge (side rail on desktop, bottom bar on mobile) tracks all six
-sections; the Plimsoll load-line mark remains the logo. The supplied reference
+large left-aligned chapter titles, and original Plimsoll-led artwork. The hero
+uses the circle-and-waterline logo; the chapters vary between aligned marks,
+a restrained two-layer mesh, a process path, a boundary gauge, an archive,
+and a corrected-document motif. Mesh stacks are no longer repeated in every chapter;
+decorative axes and cropped structure labels have been removed. The Limits and
+Evidence chapters shift to a light paper palette. A fixed depth gauge (side rail
+on desktop, bottom bar on mobile) tracks all six sections. The supplied reference
 video informs composition and motion only: no third-party video, logo, image,
 or font files are embedded. Decorative meshes are labelled as visual metaphors,
 not measurements. The shell lives in `scripts/report_theme.py`.
@@ -119,8 +122,10 @@ chart replays the recorded pages: the step trace, event counts, and `hasNextPage
 state advance together. Play/pause, restart, and a keyboard-accessible page
 slider are available with JavaScript; the replay pauses off-screen. Playback
 speed is illustrative, **not live data or recorded request timing**. The hero and
-six chapter openings use short sticky scenes: scroll position controls mesh
-rotation, layer separation, scale, and text parallax in both directions. Each
+six chapter openings use short sticky scenes: scroll position controls the logo
+compositions, one two-layer mesh, scale, and text parallax in both directions.
+The fleet diagram keeps each provider's fixed SVG translation on an outer group;
+only the inner boat bobs, so all four positions and labels remain separate. Each
 report block reveals as it enters the viewport; whole sections are never hidden.
 There is no wheel/touch interception or scroll lock. Pinning uses the actual
 scene height; scenes taller than the viewport scroll normally instead. Copy

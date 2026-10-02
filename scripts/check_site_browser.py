@@ -145,7 +145,7 @@ def check_transitions(page):
     def sample_scene(sid, progress):
         scene = page.locator(f"#{sid} .scene-intro")
         scene.evaluate("""(e,p) => window.scrollTo({
-          top:scrollY+e.getBoundingClientRect().top+(e.offsetHeight-innerHeight)*p,
+          top:scrollY+e.getBoundingClientRect().top+(e.clientHeight-e.querySelector('.scene-stage').offsetHeight)*p,
           behavior:'instant'
         })""", progress)
         page.wait_for_function("""({sid,progress}) => {
@@ -154,9 +154,9 @@ def check_transitions(page):
         }""", arg={"sid":sid,"progress":progress}, timeout=3000)
         return scene.evaluate("""e => ({
           progress:Number(getComputedStyle(e).getPropertyValue('--scene-progress')),
-          spin:getComputedStyle(e.querySelector('.layer-stack')).getPropertyValue('--scene-spin'),
-          transform:getComputedStyle(e.querySelector('.layer-stack')).transform,
-          plane:getComputedStyle(e.querySelector('.data-plane')).transform,
+          spin:getComputedStyle(e.querySelector('.art-motion')).getPropertyValue('--scene-spin'),
+          transform:getComputedStyle(e.querySelector('.art-motion')).transform,
+          plane:e.querySelector('.data-plane')?getComputedStyle(e.querySelector('.data-plane')).transform:null,
           stageTop:e.querySelector('.scene-stage').getBoundingClientRect().top
         })""")
 
@@ -172,21 +172,22 @@ def check_transitions(page):
         assert len({s["spin"] for s in (start,middle,end)}) == 3, (sid,"spin is not scroll-driven")
         assert len({s["transform"] for s in (start,middle,end)}) == 3, sid
         # Separation opens then closes; symmetric endpoints may intentionally match.
-        assert middle["plane"] != start["plane"], (sid,"layers do not separate")
+        if start['plane'] is not None:
+            assert middle["plane"] != start["plane"], (sid,"layers do not separate")
         assert start["transform"] == back["transform"], (sid,"scroll reversal does not restore scene")
         page.wait_for_timeout(350)
-        assert page.locator(f"#{sid} .layer-stack").evaluate("e=>getComputedStyle(e).transform") == back["transform"], (
+        assert page.locator(f"#{sid} .art-motion").evaluate("e=>getComputedStyle(e).transform") == back["transform"], (
             sid,"scene keeps playing while scroll is stopped"
         )
         scenes.append(sid)
 
     # Real wheel input must change the scene too, not just scripted jump hooks.
     sample_scene("sec-2", .1)
-    before = page.locator("#sec-2 .layer-stack").evaluate("e=>getComputedStyle(e).transform")
+    before = page.locator("#sec-2 .art-motion").evaluate("e=>getComputedStyle(e).transform")
     page.mouse.move(250,350)
     page.mouse.wheel(0,120)
     page.wait_for_timeout(150)
-    after = page.locator("#sec-2 .layer-stack").evaluate("e=>getComputedStyle(e).transform")
+    after = page.locator("#sec-2 .art-motion").evaluate("e=>getComputedStyle(e).transform")
     assert before != after, "wheel scroll did not animate the layers"
 
     visited=[]
@@ -371,8 +372,8 @@ def check_review_regressions(page):
     page.set_viewport_size({"width":1440,"height":1000})
     page.goto((ROOT / "docs" / "index.html").as_uri())
     page.wait_for_timeout(100)
-    if page.locator('#hero .buoy').evaluate("e=>e.getAnimations().length"):
-        failures.append({"issue":"hero buoy keeps animating at rest"})
+    if page.locator('#hero .buoy').count():
+        failures.append({"issue":"duplicate floating mark remains over the main logo"})
 
     # Without JS the rail must own a contrasting background on either palette.
     browser=page.context.browser
@@ -416,9 +417,103 @@ def check_review_regressions(page):
     return {"checks":checks,"issues":[]}
 
 
+def check_fleet_layout(page):
+    """Positioning and bobbing must compose, including at mid-animation."""
+    samples=[]
+    for width in (375,768,1440):
+        page.set_viewport_size({"width":width,"height":1000})
+        page.goto((ROOT/'docs'/'index.html').as_uri())
+        page.locator('.ships').scroll_into_view_if_needed()
+        page.wait_for_timeout(120)
+        frames=[]
+        for time_ms in (0,1150,2300,3450):
+            geometry=page.locator('.ships').evaluate("""(svg,time)=>{
+              svg.getAnimations({subtree:true}).forEach(a=>{a.pause();a.currentTime=time;});
+              return [...svg.querySelectorAll('.ship')].map(e=>{
+                const r=e.querySelector('.shiplabel').getBoundingClientRect();
+                const s=e.getScreenCTM();
+                const bbox=e.getBBox();
+                return {label:e.querySelector('.shiplabel').textContent,left:r.left,right:r.right,labelTop:r.top,
+                  centerX:s.e,y:s.f,width:bbox.width,outerAnimation:e.getAnimations().length,
+                  motion:getComputedStyle(e.querySelector('.ship-motion')).transform};
+              });
+            }""",time_ms)
+            assert len(geometry)==4
+            assert len({round(g['centerX'],2) for g in geometry})==4,(width,time_ms,geometry)
+            assert all(a['right']+3<b['left'] for a,b in zip(geometry,geometry[1:])),(width,time_ms,geometry)
+            assert all(g['outerAnimation']==0 for g in geometry),'animation overwrites positioning group'
+            frames.append(geometry)
+            samples.append({'width':width,'time_ms':time_ms,'labels':[g['label'] for g in geometry]})
+        for ship in range(4):
+            assert len({frame[ship]['motion'] for frame in frames})>1,(width,ship,'boat does not bob')
+            for coordinate in ('left','right','labelTop'):
+                values=[frame[ship][coordinate] for frame in frames]
+                assert max(values)-min(values)<.3,(width,ship,coordinate,'label moves with boat')
+        page.emulate_media(reduced_motion='reduce')
+        assert page.locator('.ships .ship').evaluate_all(
+            "els=>els.every(e=>e.getAnimations({subtree:true}).length===0)"
+        )
+        page.emulate_media(reduced_motion='no-preference')
+    return {'samples':samples,'issues':[]}
+
+
+def check_artwork_spacing(page):
+    """The logo variants must not collide with copy or the scene disclosure."""
+    samples=[]
+    for width,height in ((375,667),(375,812),(768,1024),(821,900),(1024,900),(1440,1000)):
+        page.set_viewport_size({'width':width,'height':height})
+        page.goto('about:blank')
+        page.goto((ROOT/'docs'/'index.html').as_uri())
+        page.wait_for_timeout(100)
+        variants=[]
+        for sid in ('hero',*(f'sec-{n}' for n in range(1,7))):
+            scene=page.locator('#'+sid+' .scene-intro')
+            for p in (0,.5,1):
+                scene.evaluate("""(e,p)=>scrollTo({
+                  top:scrollY+e.getBoundingClientRect().top+Math.max(0,e.clientHeight-e.querySelector('.scene-stage').offsetHeight)*p,
+                  behavior:'instant'
+                })""",p)
+                page.wait_for_timeout(70)
+                geometry=scene.evaluate("""e=>{
+                  const rect=n=>n.getBoundingClientRect();
+                  const copy=rect(e.querySelector('.scene-copy'));
+                  const footer=rect(e.querySelector('.scene-bottom'));
+                  const root=e.querySelector('.layer-art');
+                  const artwork=rect(root);
+                  const stage=rect(e.querySelector('.scene-stage'));
+                  const overlap=(a,b)=>a.left<b.right && a.right>b.left && a.top<b.bottom && a.bottom>b.top;
+                  const rendered=[...root.querySelectorAll('.data-plane,.brand-scene')].map(rect);
+                  const contains=(outer,inner)=>inner.left>=outer.left-1 && inner.right<=outer.right+1 &&
+                    inner.top>=outer.top-1 && inner.bottom<=outer.bottom+1;
+                  const logoUse=[...root.querySelectorAll('use[href="#plimsoll-emblem"]')];
+                  const visibleLogo=logoUse.length>0 && logoUse.every(u=>{
+                    const bounds=rect(u);let opacity=1;
+                    for(let node=u;node;node=node.parentElement){
+                      const style=getComputedStyle(node);
+                      if(style.display==='none'||style.visibility==='hidden') return false;
+                      opacity*=Number(style.opacity);
+                    }
+                    return bounds.width>0 && bounds.height>0 && opacity>.05 && contains(stage,bounds) &&
+                      contains(rect(u.ownerSVGElement),bounds);
+                  });
+                  return {variant:root.dataset.artwork,overlap:overlap(copy,artwork)||rendered.some(r=>overlap(copy,r)),
+                    footerOverlap:overlap(footer,artwork)||rendered.some(r=>overlap(footer,r)),
+                    left:Math.min(artwork.left,...rendered.map(r=>r.left)),right:Math.max(artwork.right,...rendered.map(r=>r.right)),
+                    visibleLogo,docWidth:document.documentElement.scrollWidth};
+                }""")
+                assert not geometry['overlap'],(width,height,sid,p,geometry)
+                assert not geometry['footerOverlap'],(width,height,sid,p,geometry)
+                assert geometry['left']>=0 and geometry['right']<=width,(width,height,sid,p,geometry)
+                assert geometry['docWidth']<=width and geometry['visibleLogo'],(width,height,sid,p,geometry)
+            variants.append(geometry['variant'])
+        assert len(set(variants))==7,variants
+        samples.append({'width':width,'height':height,'variants':variants})
+    return {'samples':samples,'issues':[]}
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--only", choices=("replay", "transitions", "review", "all"), default="all")
+    parser.add_argument("--only", choices=("replay", "transitions", "review", "fleet", "artwork", "all"), default="all")
     parser.add_argument("--browser", choices=("chromium", "webkit"), default="chromium")
     parser.add_argument("--output", type=Path, help="Optional JSON result file")
     parser.add_argument("--screenshots", type=Path, help="Optional directory for visual QA")
@@ -435,6 +530,16 @@ def main():
         page = context.new_page()
         page.goto((ROOT / "docs" / "index.html").as_uri())
         result: dict = {"browser": args.browser}
+        if args.only in ('fleet','all'):
+            result['fleet']=check_fleet_layout(page)
+            page.set_viewport_size({'width':1440,'height':1000})
+            page.goto('about:blank')
+            page.goto((ROOT/'docs'/'index.html').as_uri())
+        if args.only in ('artwork','all'):
+            result['artwork']=check_artwork_spacing(page)
+            page.set_viewport_size({'width':1440,'height':1000})
+            page.goto('about:blank')
+            page.goto((ROOT/'docs'/'index.html').as_uri())
         if args.only in ("replay", "all"):
             result["replay"] = check_replay(page)
         if args.only in ("transitions", "all"):

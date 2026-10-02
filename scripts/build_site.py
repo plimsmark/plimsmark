@@ -328,11 +328,11 @@ td code{overflow-wrap:normal; word-break:normal}
 .ships-fig{margin:1.4em 0 .6em}
 .ships{width:100%; height:auto; display:block}
 .ships .waterline{stroke-dasharray:0}
-.ships .ship{transform-box:fill-box; transform-origin:center}
-.js-anim .ships .ship{animation:shipbob 4.6s ease-in-out infinite}
-.ships .ship:nth-of-type(2){animation-delay:-.6s}
-.ships .ship:nth-of-type(3){animation-delay:-1.2s}
-.ships .ship:nth-of-type(4){animation-delay:-1.8s}
+.ships .ship-motion{transform-box:fill-box; transform-origin:center}
+.js-anim .ships .ship-motion{animation:shipbob 4.6s ease-in-out infinite}
+.ships .ship:nth-of-type(2) .ship-motion{animation-delay:-.6s}
+.ships .ship:nth-of-type(3) .ship-motion{animation-delay:-1.2s}
+.ships .ship:nth-of-type(4) .ship-motion{animation-delay:-1.8s}
 @keyframes shipbob{0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)}}
 .ships .shiplabel{fill:#eaf3f5; font-size:12px; font-family:inherit; font-weight:600}
 .ships .shippar{fill:#a9c2cc; font-size:10px; font-family:inherit; letter-spacing:.04em}
@@ -771,10 +771,12 @@ def _ship(x, name, paradigm):
     sail = "#bfeee8" if paradigm == "graphql" else "#eaf3f5"
     return (
         f'<g class="ship" transform="translate({x},0)">'
+        '<g class="ship-motion">'
         f'<line class="mast" x1="0" y1="52" x2="0" y2="112" stroke="#eaf3f5" stroke-width="3"/>'
         f'<path class="sail" d="M5,56 L5,104 L44,104 Z" fill="{sail}"/>'
         f'<path class="hull" d="M-40,110 L40,110 L28,128 L-28,128 Z" fill="#0a3a44" '
         f'stroke="#eaf3f5" stroke-width="2"/>'
+        '</g>'
         f'<text class="shiplabel" x="0" y="150" text-anchor="middle">{html.escape(name)}</text>'
         f'<text class="shippar" x="0" y="166" text-anchor="middle">{html.escape(paradigm)}</text>'
         f'</g>'

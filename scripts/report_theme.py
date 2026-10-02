@@ -33,57 +33,88 @@ CHAPTERS = (
 
 
 def mesh_definitions():
-    """A reusable original point mesh: shapes are not provider measurements."""
+    """One sparse mesh and the supplied circle/bisecting-line brand geometry."""
     lines, dots = [], []
-    for row in range(17):
+    for row in range(9):
         coords = []
-        for col in range(31):
-            x = 24 + col * 15.2
-            y = 30 + row * 17.5 + math.sin(col * .21 + row * .13) * 13
-            y += math.cos(col * .12 - row * .19) * 7
+        for col in range(17):
+            x = 24 + col * 28.5
+            y = 36 + row * 34 + math.sin(col * .35 + row * .2) * 12
             coords.append(f"{x:.1f},{y:.1f}")
-            radius = .8 + .35 * math.sin(row * .31 + col * .21) ** 2
-            dots.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{radius:.2f}"/>')
+            dots.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="1.2"/>')
         lines.append('<polyline points="' + ' '.join(coords) + '"/>')
-    cloud = []
-    for row in range(22):
-        v = row / 21
-        for col in range(40):
-            angle = col / 40 * math.tau
-            radius = 100 + 45 * math.sin(v * math.pi) + 10 * math.cos(angle * 3 + v * 7)
-            x = 260 + math.cos(angle) * radius
-            y = 24 + v * 310 + math.sin(angle) * 34
-            opacity = .15 + .72 * (math.sin(angle) + 1) / 2
-            cloud.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="1" opacity="{opacity:.2f}"/>')
     return (
         '<svg class="mesh-definitions" width="0" height="0" aria-hidden="true" '
         'focusable="false" xmlns="http://www.w3.org/2000/svg"><defs>'
+        '<symbol id="plimsoll-emblem" viewBox="0 0 100 100">'
+        '<g fill="none" stroke="currentColor" stroke-width="2.2">'
+        '<circle cx="50" cy="50" r="26"/>'
+        '<line x1="8" y1="50" x2="92" y2="50"/></g></symbol>'
         '<symbol id="mesh-surface" viewBox="0 0 520 360">'
-        '<g fill="none" stroke="currentColor" stroke-width=".45" opacity=".32">'
-        + ''.join(lines) + '</g><g fill="currentColor">' + ''.join(dots) + '</g></symbol>'
-        '<symbol id="particle-surface" viewBox="0 0 520 360"><g fill="currentColor">'
-        + ''.join(cloud) + '</g></symbol></defs></svg>'
+        '<g fill="none" stroke="currentColor" stroke-width=".7" opacity=".24">'
+        + ''.join(lines) + '</g><g fill="currentColor" opacity=".5">'
+        + ''.join(dots) + '</g></symbol></defs></svg>'
     )
+
+
+ARTWORKS = {"cloud": "emblem", "aligned": "agreement", "separated": "layers",
+            "flow": "flow", "boundary": "boundary", "archive": "archive", "resolved": "resolved"}
 
 
 def layer_art(mode):
-    planes = ''.join(
-        f'<svg class="data-plane plane-{i}" style="--level:{i - 1.5}" '
-        'viewBox="0 0 520 360" focusable="false">'
-        '<rect class="plane-edge" x="7" y="7" width="506" height="346" rx="2"/>'
-        '<use href="#mesh-surface"/></svg>'
-        for i in range(4)
-    )
-    return (
-        f'<div class="layer-art" data-mode="{html.escape(mode)}" aria-hidden="true">'
-        '<div class="art-grid"></div><div class="art-orbit"></div>'
-        '<svg class="particle-field" viewBox="0 0 520 360" focusable="false">'
-        '<use href="#particle-surface"/></svg>'
-        f'<div class="layer-stack">{planes}</div>'
-        '<div class="art-axis axis-x"></div><div class="art-axis axis-y"></div>'
-        '<span class="art-cross cross-a">+</span><span class="art-cross cross-b">+</span>'
-        '<span class="art-coordinate">PLM / STRUCTURE STUDY</span></div>'
-    )
+    """Different compositions use one brand mark, rather than seven mesh stacks."""
+    artwork = ARTWORKS[mode]
+    def logo(x, y, size):
+        return f'<use href="#plimsoll-emblem" x="{x}" y="{y}" width="{size}" height="{size}"/>'
+    if artwork == "layers":
+        planes = ''.join(
+            f'<svg class="data-plane plane-{i}" style="--level:{i - .5}" '
+            'viewBox="0 0 520 360" focusable="false">'
+            '<rect class="plane-edge" x="20" y="20" width="480" height="320"/>'
+            '<use href="#mesh-surface"/>'
+            + (logo(170, 90, 180) if i else '') + '</svg>'
+            for i in range(2)
+        )
+        content = f'<div class="layer-stack art-motion">{planes}</div>'
+    else:
+        if artwork == "emblem":
+            shapes = ('<circle class="art-faint" cx="300" cy="220" r="158" stroke-dasharray="1 13"/>'
+                      '<g class="emblem-orbit"><path d="M146,188 A158,158 0 0 1 329,65"/>'
+                      '<circle cx="329" cy="65" r="4" class="art-fill"/></g>'
+                      + logo(90, 10, 420))
+        elif artwork == "agreement":
+            shapes = '<path class="art-faint" d="M64,220 H536"/>' + ''.join(
+                f'<g class="agreement-node" style="--node:{i}">{logo(x, 170, 100)}</g>'
+                for i, x in enumerate((70, 190, 310, 430))
+            )
+            shapes += '<path class="art-faint" d="M120,290 V302 M240,290 V302 M360,290 V302 M480,290 V302"/>'
+        elif artwork == "flow":
+            shapes = ('<path class="art-faint" d="M80,260 H186 Q210,260 210,236 V194 Q210,170 234,170 H410 Q440,170 440,200 V238 Q440,260 464,260 H520"/>'
+                      '<path class="flow-signal" d="M80,260 H186 Q210,260 210,236 V194 Q210,170 234,170 H410 Q440,170 440,200 V238 Q440,260 464,260 H520"/>'
+                      '<circle cx="80" cy="260" r="12"/><circle cx="520" cy="260" r="12"/>'
+                      + logo(225, 95, 150))
+        elif artwork == "boundary":
+            shapes = (logo(78, 80, 280)
+                      + '<path class="art-faint" d="M400,80 V360 M400,110 H454 M400,165 H438 M400,220 H466 M400,275 H438 M400,330 H454"/>'
+                      '<g class="boundary-cursor"><path d="M370,220 H466"/><circle cx="400" cy="220" r="5" class="art-fill"/></g>')
+        elif artwork == "archive":
+            shapes = ('<g class="archive-side art-faint"><rect x="70" y="142" width="118" height="164"/>'
+                      '<path d="M91,177 H165 M91,201 H157 M91,225 H165"/>'
+                      '<rect x="412" y="142" width="118" height="164"/><path d="M433,177 H507 M433,201 H495 M433,225 H507"/></g>'
+                      '<g class="archive-front"><rect x="228" y="108" width="144" height="224"/>'
+                      + logo(247, 130, 106) + '<path class="art-faint" d="M252,267 H348 M252,287 H334"/></g>')
+        else:
+            shapes = ('<g class="revision-before art-faint"><rect x="60" y="138" width="128" height="164"/>'
+                      '<path d="M82,182 H165 M82,207 H150 M82,232 H165 M70,277 L179,155"/></g>'
+                      '<path class="revision-link" d="M220,220 H294 M281,207 L294,220 L281,233"/>'
+                      '<g class="revision-after"><rect x="330" y="108" width="200" height="224"/>'
+                      + logo(360, 128, 140)
+                      + '<path class="art-faint" d="M355,293 H505"/></g>')
+        content = ('<svg class="brand-scene art-motion" viewBox="0 0 600 440" '
+                   'fill="none" stroke="currentColor" stroke-width="1.8" focusable="false">'
+                   + shapes + '</svg>')
+    return (f'<div class="layer-art" data-mode="{html.escape(mode)}" '
+            f'data-artwork="{artwork}" aria-hidden="true">{content}</div>')
 
 
 def scene_intro(index, date, verdict=None):
@@ -94,10 +125,9 @@ def scene_intro(index, date, verdict=None):
         heading = "h1"
         detail = (f'<a class="scene-cta" href="#sec-1">Explore the findings <span aria-hidden="true">↘</span></a>'
                   f'<span class="hero-verdict">Recorded verdict <b>{html.escape(verdict or "")}</b></span>')
-        buoy = '<svg class="buoy" viewBox="0 0 100 100" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="4"><line x1="4" y1="50" x2="96" y2="50"/><circle cx="50" cy="50" r="26"/></svg>'
     else:
         eyebrow, title, description, label, mode = CHAPTERS[index - 1]
-        heading, detail, buoy = "h2", "", ""
+        heading, detail = "h2", ""
     return (
         f'<div class="scene-intro" data-scene="{index}" data-mode="{mode}">'
         '<div class="scene-stage">'
@@ -106,7 +136,7 @@ def scene_intro(index, date, verdict=None):
         f'<{heading} class="scene-title">{title}</{heading}>'
         f'<p class="scene-description">{html.escape(description)}</p>'
         f'<div class="scene-actions">{detail}</div></div>'
-        f'{layer_art(mode)}{buoy}'
+        f'{layer_art(mode)}'
         '<div class="scene-bottom">'
         f'<span>{html.escape(label)}</span><span class="scene-metaphor">Visual metaphor · not a measurement</span>'
         '<span class="scene-scroll" aria-hidden="true">SCROLL TO EXPLORE ↓</span>'
@@ -165,18 +195,17 @@ h3{font-size:1.22rem;line-height:1.4;font-weight:500;letter-spacing:-.3px;margin
 .lede{font-size:1.2rem;line-height:1.7}
 .wave{display:none}
 #hero{display:block;min-height:0;padding:0;overflow:visible;background:#07192e}
-#hero .buoy{position:absolute;right:5%;bottom:19%;width:66px;height:66px;color:#a3dce7;
-  filter:none;opacity:.55;z-index:1}
-.js-anim #hero .buoy{animation:none}
+
 .scene-intro{--scene-progress:0;--scene-spin:-30deg;--scene-tilt:60deg;--scene-gap:36px;
   --scene-scale:1;--scene-lift:0px;--scene-copy-y:0px;--cloud-opacity:.08;--cloud-scale:1;
   position:relative;height:148vh;min-height:950px;border-bottom:1px solid var(--line)}
 .scene-stage{height:100vh;min-height:600px;position:sticky;top:0;overflow:hidden;display:grid;
-  grid-template-columns:44% 56%;align-items:center;padding:96px max(100px,8.5vw) 100px;
+  grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:clamp(24px,3vw,56px);
+  align-items:center;padding:96px max(70px,6vw) 100px;
   padding-left:max(150px,8.5vw)}
 .scene-stage::before{content:"";position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(ellipse at 77% 53%,rgba(38,103,147,.15),transparent 59%)}
-.scene-copy{position:relative;z-index:3;max-width:580px;transform:translate3d(0,var(--scene-copy-y),0)}
+.scene-copy{position:relative;z-index:3;max-width:580px;min-width:0;transform:translate3d(0,var(--scene-copy-y),0)}
 .scene-eyebrow{font-size:10px;font-weight:500;letter-spacing:.19em;text-transform:uppercase;
   margin:0 0 28px;color:var(--muted)}
 .scene-title{display:block;font-family:"Arial Narrow","Helvetica Neue",Arial,sans-serif;font-weight:450;
@@ -196,31 +225,28 @@ h3{font-size:1.22rem;line-height:1.4;font-weight:500;letter-spacing:-.3px;margin
   letter-spacing:.08em;color:var(--muted);font-size:10px}
 .scene-metaphor{opacity:.8}
 .scene-scroll{color:var(--accent)}
-.layer-art{position:relative;width:clamp(430px,47vw,920px);height:clamp(420px,55vh,720px);
-  margin-left:0;perspective:1300px;z-index:1;color:#82d5ed;pointer-events:none;
-  transform:translate3d(0,var(--scene-lift),0) scale(var(--scene-scale))}
-.layer-stack{position:absolute;inset:17% 0;transform-style:preserve-3d;
+.layer-art{position:relative;width:100%;max-width:620px;aspect-ratio:600/440;min-width:0;
+  justify-self:end;perspective:1200px;z-index:1;color:var(--accent);pointer-events:none}
+.brand-scene{width:100%;height:100%;display:block;overflow:visible;
+  transform:translateY(calc(var(--scene-lift) * .4)) scale(calc(.98 + var(--scene-progress) * .02));
+  transform-origin:50% 50%}
+.brand-scene .art-faint{opacity:.27}.brand-scene .art-fill{fill:currentColor;stroke:none}
+.emblem-orbit{transform-origin:300px 220px;
+  transform:rotate(calc(var(--scene-progress) * 50deg))}
+.revision-link{stroke-dasharray:100;stroke-dashoffset:calc((1 - var(--scene-progress)) * 70)}
+.revision-after{transform:translateY(calc(var(--scene-progress) * -10px))}
+.agreement-node{opacity:calc(.65 + var(--scene-progress) * .35)}
+.flow-signal{stroke-dasharray:46 460;stroke-dashoffset:calc(var(--scene-progress) * -480);stroke-width:3}
+.boundary-cursor{transform:translateY(calc((var(--scene-progress) - .5) * 106px))}
+.archive-front{transform:translateY(calc(var(--scene-progress) * -12px))}
+.layer-stack{position:absolute;inset:22% 12%;transform-style:preserve-3d;
   transform:rotateX(var(--scene-tilt)) rotateZ(var(--scene-spin));}
 .data-plane{position:absolute;inset:0;width:100%;height:100%;overflow:visible;
   transform:translateZ(calc(var(--level) * var(--scene-gap)));backface-visibility:visible;
   filter:drop-shadow(0 1px 8px rgba(82,161,200,.12));}
-.plane-edge{fill:rgba(8,29,49,.27);stroke:currentColor;stroke-width:.65}
-.plane-0{color:#275e91}.plane-1{color:#4daada}.plane-2{color:#b6eff3}.plane-3{color:#75d9d7}
-.art-grid{position:absolute;inset:3% -3%;border:1px solid rgba(150,202,223,.07);
-  background-image:linear-gradient(rgba(96,153,182,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(96,153,182,.045) 1px,transparent 1px);
-  background-size:54px 54px;transform:rotate(-9deg);opacity:.6}
-.art-orbit{position:absolute;inset:12% 10%;border:1px solid rgba(126,197,224,.14);border-radius:50%;
-  transform:rotate(-30deg) scaleY(.55)}
-.particle-field{position:absolute;inset:-8% -4%;width:108%;height:116%;color:#a2e7ef;
-  opacity:var(--cloud-opacity);transform:scale(var(--cloud-scale)) rotate(calc(var(--scene-progress) * 18deg));}
-.art-axis{position:absolute;background:rgba(127,192,222,.19)}
-.axis-x{width:88%;height:1px;left:5%;top:55%;transform:rotate(-22deg)}
-.axis-y{width:1px;height:84%;left:55%;top:8%;transform:rotate(-22deg)}
-.art-cross{position:absolute;font:18px ui-monospace,monospace;color:#6a8ca8}
-.cross-a{left:9%;top:6%}.cross-b{right:4%;bottom:8%}
-.art-coordinate{position:absolute;right:1%;bottom:0;font:8px ui-monospace,monospace;letter-spacing:.17em;color:var(--muted)}
+.plane-edge{fill:rgba(8,29,49,.8);stroke:currentColor;stroke-width:.8}
+.plane-0{color:#426f92}.plane-1{color:#9cdeed}
 .scene-intro[data-mode="cloud"]{--cloud-opacity:.62;--scene-gap:12px}
-[data-mode="cloud"] .layer-stack{opacity:.5}
 .scene-intro[data-mode="separated"]{--scene-gap:82px;--scene-spin:-22deg}
 .scene-intro[data-mode="flow"]{--scene-gap:48px;--scene-spin:26deg;--scene-tilt:68deg}
 .scene-intro[data-mode="boundary"]{--scene-gap:18px;--scene-spin:-42deg}
@@ -233,10 +259,7 @@ h3{font-size:1.22rem;line-height:1.4;font-weight:500;letter-spacing:-.3px;margin
 .light-chapter .scene-stage::before{background:radial-gradient(ellipse at 77% 53%,rgba(104,170,183,.1),transparent 60%)}
 .light-chapter .plane-edge{fill:rgba(218,234,242,.38)}
 .light-chapter .plane-0{color:#2d5385}.light-chapter .plane-1{color:#37809c}
-.light-chapter .plane-2{color:#306176}.light-chapter .plane-3{color:#328c91}
-.light-chapter .art-grid{border-color:rgba(33,84,111,.13)}
-.light-chapter .art-axis{background:rgba(37,96,127,.18)}
-.light-chapter .art-orbit{border-color:rgba(30,101,132,.18)}
+
 .light-chapter strong,.light-chapter h3{color:var(--ink)}
 .gauge{left:25px}
 .gauge .dot{width:8px;height:8px;border-width:1px}
@@ -288,34 +311,35 @@ h3{font-size:1.22rem;line-height:1.4;font-weight:500;letter-spacing:-.3px;margin
 footer{max-width:1080px;padding:65px 46px 100px;border-top:1px solid var(--line);font-size:.8rem}
 @media (min-width:1700px){.scene-stage{padding-left:12vw}.scene-bottom{left:12vw}.scene-title{font-size:110px}}
 @media (max-width:1100px) and (min-width:821px){
-  .scene-stage{padding-left:150px;padding-right:40px;grid-template-columns:46% 54%}
-  .scene-title,#hero .scene-title{font-size:60px}.layer-art{width:530px}
-  .art-coordinate{display:none}
+  .scene-stage{padding-left:150px;padding-right:35px;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)}
+  .scene-title,#hero .scene-title{font-size:clamp(44px,5.2vw,60px)}
   .header-meta span:last-child{display:none}.scene-bottom{left:150px}}
 @media (max-width:820px){
   body{font-size:16px}.site-header{height:70px;padding:0 20px;gap:15px}
   .site-brand{font-size:24px}.site-brand .mark{width:27px;height:27px}.header-meta{display:none}
   .header-evidence{font-size:10px;gap:8px;padding:4px 10px}
   .scene-intro{height:132vh;min-height:900px}
-  .scene-stage{height:100svh;min-height:670px;display:block;padding:110px 25px 90px}
+  .scene-stage{height:100svh;min-height:740px;display:flex;flex-direction:column;align-items:stretch;
+    gap:12px;padding:104px 25px 112px}
   .scene-copy{max-width:500px}.scene-title,#hero .scene-title{font-size:clamp(49px,10vw,74px);line-height:1.02;
     letter-spacing:-.055em;margin-bottom:20px}
   .scene-eyebrow{font-size:9px;margin-bottom:18px}.scene-description{font-size:13px;max-width:32ch;line-height:1.65}
   .scene-actions{margin-top:21px;gap:10px}.scene-cta{min-height:44px;padding:7px 14px;gap:35px;font-size:11px}
-  .hero-verdict{font-size:8px}
-  .layer-art{position:absolute;width:78vw;height:39vh;min-height:250px;right:-4vw;bottom:94px;margin:0}
-  #hero .layer-art{right:-11vw;bottom:62px;width:84vw;opacity:.8}
-  .layer-stack{inset:20% 0}.art-grid{opacity:.3}.art-coordinate{font-size:7px}
-  .art-coordinate,.art-cross{display:none}
-  .scene-bottom{left:25px;right:25px;bottom:76px;font-size:8px;letter-spacing:.02em;gap:8px}
-  .scene-metaphor{max-width:130px;text-align:right}.scene-scroll{display:none}
-  #hero .buoy{right:19px;bottom:24%;width:40px;height:40px}
+  .hero-verdict{font-size:10px}
+  .layer-art{position:relative;width:100%;max-width:390px;height:auto;flex:1 1 220px;
+    min-height:185px;max-height:300px;align-self:center;margin:0}
+  #hero .layer-art{min-height:155px;flex-basis:180px}
+  .brand-scene{position:absolute;inset:0;width:100%;height:100%}
+  .layer-stack{inset:24% 16%}
+  .scene-bottom{left:25px;right:25px;bottom:76px;font-size:9px;letter-spacing:.02em;gap:12px}
+  .scene-metaphor{max-width:155px;text-align:right}.scene-scroll{display:none}
+
   .depth{padding:0 0 65px}.depth>.inner{padding:38px 22px 0}
   .depth>.inner>h2{font-size:28px;letter-spacing:-.9px;margin-bottom:26px}
   h3{font-size:1.08rem;margin-top:2em}.lede{font-size:1.08rem}
   .gauge{left:0;right:0;bottom:0;top:auto;z-index:45;transform:none;background:#06182cf5;backdrop-filter:none}
   .gauge[data-light="true"]{background:#e5eff6fa;border-top-color:#afc1d0}
-  .gauge .lbl{font-size:8px;letter-spacing:0;text-transform:none}
+  .gauge .lbl{font-size:9.5px;letter-spacing:0;text-transform:none}
   .gauge a{gap:5px;padding:5px 1px}.gauge .dot{width:6px;height:6px}
   .terminal,.diagram,.sonar,.timeline,.route,.latency,.pipeline,.amendment{padding:16px;margin:1.4em 0}
   .terminal{padding:0}.term-bar,.term-note,.term-body{padding:12px}
@@ -326,8 +350,8 @@ footer{max-width:1080px;padding:65px 46px 100px;border-top:1px solid var(--line)
   footer{padding:50px 22px 110px}
 }
 @media (max-width:820px) and (max-height:750px){
-  .scene-stage{min-height:720px}.layer-art{bottom:80px;height:280px;opacity:.6}
-  .scene-bottom{bottom:55px}.scene-description{font-size:12px}}
+  .scene-stage{min-height:780px}
+  .scene-bottom{bottom:76px}.scene-description{font-size:12px}}
 .scene-intro[data-unpinned="true"]{height:auto;min-height:0}
 .scene-intro[data-unpinned="true"]>.scene-stage{position:relative}
 /* No script tracks chapter colours: keep the fallback rail on its own navy surface. */
